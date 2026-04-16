@@ -7,8 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Serif+Display:ital@0;1&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Barlow+Condensed:wght@300;400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link href="https://unpkg.com/maplibre-gl@4.1.2/dist/maplibre-gl.css" rel="stylesheet">
+<script src="https://unpkg.com/maplibre-gl@4.1.2/dist/maplibre-gl.js"></script>
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <style>
 /* ───────────────────────────────────────────
@@ -591,12 +591,28 @@ button{ font-family:inherit; cursor:pointer; }
 ─────────────────────────────────────────── */
 #psp{ background:var(--bg); }
 
-/* Leaflet map */
+/* MapLibre map */
 .map-wrap{
   position:relative; border-radius:10px; overflow:hidden;
   border:1px solid var(--border); box-shadow:var(--shadow);
 }
 #lmap{ height:min(55vh,500px); width:100%; }
+.maplibregl-popup-content{ font-family:'Barlow Condensed',sans-serif; border-radius:8px !important; padding:0 !important; overflow:hidden; box-shadow:0 8px 28px rgba(0,0,0,.45) !important; }
+.maplibregl-ctrl-logo{ display:none !important; }
+
+/* Map skeleton loader */
+.map-skeleton{
+  position:absolute; inset:0; z-index:10;
+  background:var(--surf2);
+  display:flex; align-items:center; justify-content:center; flex-direction:column; gap:1.25rem;
+  transition:opacity .55s ease, visibility .55s ease;
+}
+.map-skeleton.gone{ opacity:0; visibility:hidden; pointer-events:none; }
+.map-sk-icon{ font-size:2.6rem; animation:pulse 2s ease-in-out infinite; }
+.map-sk-label{ font-family:'Barlow Condensed',sans-serif; font-size:.72rem; letter-spacing:.28em; text-transform:uppercase; color:var(--muted2); }
+.map-sk-bar{ width:140px; height:2px; background:var(--border2); border-radius:1px; overflow:hidden; }
+.map-sk-fill{ height:100%; background:var(--accent); animation:lf 2.2s cubic-bezier(.4,0,.2,1) infinite; }
+@keyframes mskfill{ 0%{width:0%;left:0} 50%{width:70%;left:0} 100%{width:0%;left:100%} }
 .map-ctrls{ position:absolute; top:.65rem; right:.65rem; z-index:400; display:flex; flex-direction:column; gap:.35rem; }
 .mc-btn{
   background:var(--surf); border:1px solid var(--border); color:var(--accent);
@@ -897,6 +913,8 @@ button{ font-family:inherit; cursor:pointer; }
     <li><button class="nav-btn"     data-p="conservation" onclick="go('conservation')">Conservation</button></li>
     <li><button class="nav-btn"     data-p="species"      onclick="go('species')">Species</button></li>
     <li><button class="nav-btn"     data-p="impact"       onclick="go('impact')">Impact</button></li>
+    <li><button class="nav-btn"     data-p="magazine"     onclick="goSection('impact','magazine-section')">Magazine</button></li>
+    <li><button class="nav-btn"     data-p="scavenger"    onclick="goSection('impact','scavenger-section')">Scavenger Hunt</button></li>
     <li><button class="nav-btn"     data-p="contact"      onclick="go('contact')">Contact</button></li>
   </ul>
   <div class="nav-right">
@@ -976,6 +994,8 @@ button{ font-family:inherit; cursor:pointer; }
     <button class="mob-link"     data-p="conservation" onclick="go('conservation');toggleMob()">🌊 Conservation</button>
     <button class="mob-link"     data-p="species"      onclick="go('species');toggleMob()">🐠 Species</button>
     <button class="mob-link"     data-p="impact"       onclick="go('impact');toggleMob()">📖 Impact</button>
+    <button class="mob-link"     data-p="magazine"     onclick="goSection('impact','magazine-section');toggleMob()">📰 Magazine</button>
+    <button class="mob-link"     data-p="scavenger"    onclick="goSection('impact','scavenger-section');toggleMob()">🏅 Scavenger Hunt</button>
     <button class="mob-link"     data-p="contact"      onclick="go('contact');toggleMob()">👥 Contact</button>
   </div>
   <div class="mob-settings">
@@ -1252,6 +1272,11 @@ button{ font-family:inherit; cursor:pointer; }
     <h2 class="sect-title reveal">MANGROVE<br><span style="color:var(--accent)">HOTSPOTS</span></h2>
     <p class="sect-sub reveal">Interactive map of key mangrove conservation zones. Click markers for details — toggle satellite view for visual comparison.</p>
     <div class="map-wrap reveal" style="margin-top:1.75rem;">
+      <div id="map-skeleton" class="map-skeleton">
+        <div class="map-sk-icon">🌿</div>
+        <div class="map-sk-bar"><div class="map-sk-fill"></div></div>
+        <div class="map-sk-label">Loading map tiles…</div>
+      </div>
       <div id="lmap"></div>
       <div class="map-ctrls">
         <button class="mc-btn on" id="mcStr" onclick="setLayer('street')">🗺 Map</button>
@@ -1291,7 +1316,7 @@ button{ font-family:inherit; cursor:pointer; }
     <div class="chip reveal">E-Magazine</div>
     <h2 class="sect-title reveal">MANGROVE<br><span style="color:var(--accent)">CHRONICLES</span></h2>
     <p style="color:var(--muted);margin-top:.55rem;font-family:'Barlow Condensed',sans-serif;font-size:.76rem;letter-spacing:.12em;text-transform:uppercase;" class="reveal">Weekly publication — MangroveWatch 2026</p>
-    <div class="issue-pills reveal" id="issuePills"></div>
+    <div class="issue-pills reveal" id="issuePills" style="margin-top:1.25rem;"></div>
     <div class="mag-wrap">
       <div id="magSpin" class="mag-spin"><div class="spin"></div><p style="font-family:'Barlow Condensed',sans-serif;font-size:.76rem;letter-spacing:.15em;text-transform:uppercase;">Loading…</p></div>
       <div id="magEmpty" class="mag-empty" style="display:none;text-align:center;padding:2.5rem 1rem;"><p style="font-size:2rem;margin-bottom:.6rem;">🌿</p><h3>First Issue Coming Soon</h3><p>Our weekly publication launches shortly — check back soon!</p></div>
@@ -1345,14 +1370,14 @@ button{ font-family:inherit; cursor:pointer; }
   </div>
 
   <!-- Event -->
-  <div class="wrap" style="padding-top:3rem;">
+  <div class="wrap" id="scavenger-section" style="padding-top:3rem;">
     <div class="chip reveal">The Event</div>
     <h2 class="sect-title reveal">OPERATION<br><span style="color:var(--accent)">MANGROVE</span></h2>
     <div class="event-card reveal">
       <div class="ev-ey">Mission Briefing</div>
       <div class="ev-title">Mangrove Conservation Scavenger Hunt</div>
       <div class="ev-sub">Qurum Beach, Muscat, Oman · After Summer Holidays 2026</div>
-      <p class="ev-mission">A team-based field operation at one of Muscat's most important mangrove habitats. Participants work in squads to complete conservation challenges — collecting waste, recording field data, identifying species, and navigating ecological checkpoints — all while raising funds for NGOs protecting coastal ecosystems across Oman.</p>
+      <p class="ev-mission">A team-based field operation at one of Muscat's most important mangrove habitats. Participants work in squads to complete conservation challenges — collecting waste, recording field data, identifying species, and navigating ecological checkpoints — all while contributing to the protection of coastal ecosystems across Oman. <strong style="color:var(--accent);">Entry: Free for All.</strong></p>
       <div class="ev-obj">
         <div class="ev-obj-i"><span class="ev-obj-ico">🧹</span><div class="ev-obj-tx">Coastal waste collection &amp; removal at marked zones</div></div>
         <div class="ev-obj-i"><span class="ev-obj-ico">📊</span><div class="ev-obj-tx">Field data: species counts, water clarity, root density</div></div>
@@ -1366,14 +1391,14 @@ button{ font-family:inherit; cursor:pointer; }
       <div class="logi-card"><div class="logi-h">Location</div><div class="logi-v">Qurum Beach</div><div class="logi-s">Muscat, Oman</div></div>
       <div class="logi-card"><div class="logi-h">Date</div><div class="logi-v">Post-Summer 2026</div><div class="logi-s">Exact date TBC</div></div>
       <div class="logi-card"><div class="logi-h">Time</div><div class="logi-v">TBC</div><div class="logi-s">Schedule released closer to event</div></div>
-      <div class="logi-card"><div class="logi-h">Entry Fee</div><div class="logi-v" style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:#2d6a4f;" id="evFee">2 OMR</div><div class="logi-s">100% donated to NGO</div></div>
+      <div class="logi-card"><div class="logi-h">Entry</div><div class="logi-v" style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--accent);" id="evFee">Free</div><div class="logi-s">Entry: Free for All</div></div>
     </div>
     <div class="roe-block reveal">
       <div class="roe-ttl">📋 Rules of Engagement</div>
       <div class="roe-list">
         <div class="roe-i"><div class="roe-dot"></div><span>Teams of <strong>3 to 5 participants</strong> — no solo entries</span></div>
         <div class="roe-i"><div class="roe-dot"></div><span><strong>Smartphone required</strong> per team for GPS, clue scanning &amp; photo submissions</span></div>
-        <div class="roe-i"><div class="roe-dot"></div><span>Entry fee <strong>2 OMR per person</strong> — all proceeds donated to mangrove NGO</span></div>
+        <div class="roe-i"><div class="roe-dot"></div><span>Entry is <strong>Free for All</strong> — open to everyone who signs up</span></div>
         <div class="roe-i"><div class="roe-dot"></div><span>Stay within designated zones and follow the environmental code of conduct</span></div>
         <div class="roe-i"><div class="roe-dot"></div><span>No littering, no disruption to wildlife, no removal of natural materials</span></div>
       </div>
@@ -1382,9 +1407,9 @@ button{ font-family:inherit; cursor:pointer; }
       <div class="chip reveal">Signup Process</div>
       <div class="phase-grid reveal">
         <div class="phase-s"><div class="ph-num">01</div><div class="ph-name">Team Registration</div><div class="ph-desc">Fill in the form with team name, members, and contact details.</div></div>
-        <div class="phase-s"><div class="ph-num">02</div><div class="ph-name">Payment</div><div class="ph-desc">Pay 2 OMR per member. A confirmation receipt will be issued.</div></div>
+        <div class="phase-s"><div class="ph-num">02</div><div class="ph-name">Confirm Sign-Up</div><div class="ph-desc">No payment required — entry is free. A confirmation email will be sent on registration.</div></div>
         <div class="phase-s"><div class="ph-num">03</div><div class="ph-name">Briefing Pack</div><div class="ph-desc">Receive your team briefing document and entry QR code.</div></div>
-        <div class="phase-s"><div class="ph-num">04</div><div class="ph-name">Entry Confirmed</div><div class="ph-desc">Show QR code at the gate. Arrive 15 min early for roll-call.</div></div>
+        <div class="phase-s"><div class="ph-num">04</div><div class="ph-name">Entry Confirmed</div><div class="ph-desc">Show your QR code at the gate. Arrive 15 min early for roll-call. Entry is free.</div></div>
       </div>
       <div class="reg-cta reveal"><a href="#" class="btn-p">🌿 Register Your Team</a><span class="reg-note">Registration form link — updated closer to event date.</span></div>
     </div>
@@ -1502,7 +1527,7 @@ const STEPS=[
   {ico:'🌿',t:'Welcome to MangroveWatch',d:'An awareness project about the destruction of mangroves for urban infrastructure. Created by Reuben in 2026.',v:null},
   {ico:'📖',t:'Navigate by Page',d:'Use the top menu (or hamburger on mobile) to jump between <strong>Home, Conservation, Species, Impact,</strong> and <strong>Contact</strong>.',v:[{i:'📉',x:'Conservation — crisis stats & charts'},{i:'🗺️',x:'Species — map & species database'},{i:'📖',x:'Impact — magazine, calculator & event'}]},
   {ico:'💬',t:'Feedback & Queries',d:'Scroll down on the <strong>Home page</strong> to leave us feedback, rate the project, or send a direct query — all stored in our database.',v:null},
-  {ico:'🏅',t:'Join Operation Mangrove',d:'Visit <strong>Impact</strong> for our weekly magazine and the Qurum Beach scavenger hunt details — 2 OMR entry, all funds donated.',v:[{i:'📍',x:'Qurum Beach, Muscat, Oman'},{i:'👥',x:'Teams of 3–5, phone required'}]},
+  {ico:'🏅',t:'Join Operation Mangrove',d:'Visit <strong>Impact</strong> for our weekly magazine and the Qurum Beach scavenger hunt details — <strong>Entry: Free for All!</strong>',v:[{i:'📍',x:'Qurum Beach, Muscat, Oman'},{i:'👥',x:'Teams of 3–5, phone required'}]},
   {ico:'⚙️',t:'Settings & Accessibility',d:'Click the Settings button in the nav bar to switch themes (Dark/Light/High Contrast), adjust font size, change language, currency, and toggle the ambient mangrove soundscape.',v:null}
 ];
 let ts=0;
@@ -1543,7 +1568,7 @@ function setFZ(v){document.documentElement.setAttribute('data-fz',v);localStorag
 function setLang(v){document.documentElement.lang=v;localStorage.setItem('mw26_lang',v);}
 const CR={OMR:1,USD:2.6,EUR:2.38,GBP:2.04,INR:216};
 const CS={OMR:'OMR',USD:'$',EUR:'€',GBP:'£',INR:'₹'};
-function setCurr(c){const r=CR[c]||1;const s=CS[c]||c;const v=(2*r).toFixed(2);document.getElementById('evFee').textContent=`${s}${v}`;localStorage.setItem('mw26_curr',c);}
+function setCurr(c){localStorage.setItem('mw26_curr',c);}
 // Load saved
 (()=>{
   const t=localStorage.getItem('mw26_theme')||'dark';
@@ -1620,6 +1645,13 @@ function go(pid,push=true){
   if(pid==='species')loadSpecies();
   if(pid==='conservation'&&!chartsOK){chartsOK=true;setTimeout(()=>document.querySelectorAll('.cc').forEach(c=>ccObs.observe(c)),100);}
 }
+function goSection(pid,sectionId,push=true){
+  go(pid,push);
+  setTimeout(()=>{
+    const el=document.getElementById(sectionId);
+    if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
+  },120);
+}
 window.addEventListener('popstate',e=>{const pid=(e.state?.p)||location.hash.slice(1)||'home';go(pid,false);});
 const initHash=location.hash.slice(1)||'home';
 go(Object.keys(PAGES).includes(initHash)?initHash:'home',false);
@@ -1644,35 +1676,185 @@ function updateTide(){
 }
 fetchWeather();updateTide();setInterval(updateTide,60000);
 
-/* ── Leaflet map ── */
-let lmap=null,sLayer=null,satLayer=null;
-const SPOTS=[
+/* ── MapLibre GL map ── */
+let lmap=null;
+
+const GLOBAL_SPOTS=[
+  /* ── Oman & Gulf ── */
   {lat:23.5916,lng:58.3834,n:"Al Qurum Natural Reserve",c:"Oman",t:"critical",a:"850 ha",note:"Largest protected mangrove zone in Muscat. Under pressure from urban encroachment."},
   {lat:22.5167,lng:59.7667,n:"Ras al Hadd Coast",c:"Oman",t:"moderate",a:"320 ha",note:"Nesting ground for Hawksbill sea turtles. Seasonal monitoring in place."},
+  {lat:22.9333,lng:57.5333,n:"Quriyat Mangroves",c:"Oman",t:"high",a:"180 ha",note:"Isolated mangrove patches facing coastal development pressure south of Muscat."},
+  {lat:20.5500,lng:58.5667,n:"Ras Madrakah",c:"Oman",t:"moderate",a:"240 ha",note:"Remote mangrove stands on Oman's southern coastline, relatively undisturbed."},
   {lat:25.0294,lng:56.3607,n:"Khor Kalba",c:"UAE",t:"high",a:"200 ha",note:"Northernmost mangrove forest in the world. Habitat for the White-collared Kingfisher."},
-  {lat:21.9497,lng:89.1833,n:"Sundarbans Delta",c:"India/Bangladesh",t:"critical",a:"10,000 km²",note:"World's largest mangrove forest. Home to Bengal Tigers. Rising sea levels are a major threat."},
-  {lat:19.0896,lng:72.8553,n:"Mumbai Mangroves",c:"India",t:"high",a:"6,600 ha",note:"Critical storm buffer. Severely threatened by illegal encroachment and reclamation."},
-  {lat:10.4000,lng:79.5000,n:"Muthupet Lagoon",c:"India",t:"moderate",a:"6,877 ha",note:"Breeding ground for flamingos and pelicans. Ramsar Wetland of International Importance."}
+  {lat:24.4667,lng:54.3667,n:"Eastern Mangrove Lagoon",c:"UAE",t:"moderate",a:"600 ha",note:"Abu Dhabi's urban mangrove park — a rare urban conservation success story."},
+  {lat:26.2154,lng:50.5832,n:"Tubli Bay",c:"Bahrain",t:"critical",a:"1,040 ha",note:"Bahrain's last major mangrove ecosystem, reduced by 70% since the 1960s from reclamation."},
+  {lat:27.5500,lng:49.8000,n:"Half Moon Bay Mangroves",c:"Saudi Arabia",t:"high",a:"300 ha",note:"Fringe mangroves on Saudi Arabia's Eastern Province coast, threatened by industrial expansion."},
+  /* ── South Asia ── */
+  {lat:21.9497,lng:89.1833,n:"Sundarbans Delta",c:"India / Bangladesh",t:"critical",a:"10,000 km²",note:"World's largest mangrove forest. Home to Bengal Tigers. Rising sea levels are a major threat."},
+  {lat:19.0896,lng:72.8553,n:"Mumbai Mangroves",c:"India",t:"high",a:"6,600 ha",note:"Critical storm buffer for 20 million people. Severely threatened by illegal encroachment."},
+  {lat:10.4000,lng:79.5000,n:"Muthupet Lagoon",c:"India",t:"moderate",a:"6,877 ha",note:"Breeding ground for flamingos and pelicans. Ramsar Wetland of International Importance."},
+  {lat:9.4167,lng:79.2000,n:"Pichavaram Mangrove Forest",c:"India",t:"moderate",a:"1,100 ha",note:"One of India's largest mangrove wetlands, linked by a network of boat channels."},
+  {lat:8.0883,lng:77.5385,n:"Muthupet & Gulf of Mannar",c:"India",t:"high",a:"10,500 ha",note:"Biosphere reserve with coral reefs, seagrass and mangroves supporting artisanal fishers."},
+  {lat:6.9271,lng:79.8612,n:"Negombo Lagoon",c:"Sri Lanka",t:"high",a:"3,169 ha",note:"Mangrove-fringed lagoon north of Colombo under intense urban and fishing pressure."},
+  {lat:23.8103,lng:90.4125,n:"Chokoria Sundarban",c:"Bangladesh",t:"critical",a:"8,000 ha",note:"Once a lush mangrove belt — now almost entirely cleared for shrimp aquaculture."},
+  /* ── Southeast Asia ── */
+  {lat:4.5675,lng:100.9925,n:"Matang Mangrove Forest",c:"Malaysia",t:"low",a:"40,000 ha",note:"One of the world's best-managed mangrove forests, sustainably logged since 1902."},
+  {lat:1.4306,lng:103.7302,n:"Sungei Buloh Wetland Reserve",c:"Singapore",t:"moderate",a:"202 ha",note:"Key migratory bird stopover on the East Asian-Australasian Flyway."},
+  {lat:-8.4095,lng:115.1889,n:"Benoa Bay Mangroves",c:"Indonesia",t:"high",a:"1,373 ha",note:"Bali's primary mangrove ecosystem, threatened by reclamation projects."},
+  {lat:-0.7893,lng:113.9213,n:"Borneo Mangroves",c:"Indonesia",t:"critical",a:"1,500,000 ha",note:"World's third-largest mangrove ecosystem. Rapidly lost to palm oil and shrimp farming."},
+  {lat:14.5995,lng:121.0359,n:"Las Piñas–Parañaque Wetland",c:"Philippines",t:"high",a:"175 ha",note:"Urban mangrove sanctuary buffering Metro Manila's southern coast from flooding."},
+  {lat:10.3157,lng:123.8854,n:"Olango Island Wildlife Sanctuary",c:"Philippines",t:"moderate",a:"920 ha",note:"Critical shorebird habitat in the Visayas. Ramsar listed."},
+  {lat:13.7563,lng:100.5018,n:"Bangphu Mangroves",c:"Thailand",t:"high",a:"2,400 ha",note:"Once vast mangrove belt around the Gulf of Thailand, drastically reduced by aquaculture."},
+  {lat:16.4637,lng:107.5909,n:"Tam Giang–Cầu Hai Lagoon",c:"Vietnam",t:"moderate",a:"21,600 ha",note:"Southeast Asia's largest lagoon; fringing mangroves support hundreds of fishing families."},
+  /* ── East Asia ── */
+  {lat:21.9561,lng:113.6314,n:"Zhuhai Mangrove Nature Reserve",c:"China",t:"high",a:"2,100 ha",note:"Pearl River Delta mangroves — critical stopover for East Asian migratory shorebirds."},
+  {lat:24.4792,lng:118.0819,n:"Zhangjiangkou Mangrove Reserve",c:"China",t:"moderate",a:"2,360 ha",note:"China's first Ramsar-listed mangrove site in Fujian Province."},
+  /* ── Africa ── */
+  {lat:9.0500,lng:-13.7500,n:"Bijagós Archipelago",c:"Guinea-Bissau",t:"low",a:"250,000 ha",note:"UNESCO Biosphere Reserve — one of Africa's largest and most intact mangrove systems."},
+  {lat:6.3654,lng:2.4183,n:"Lake Nokoué Mangroves",c:"Benin",t:"high",a:"4,500 ha",note:"Fringe mangroves around a stilt-house lake community. Degraded by charcoal cutting."},
+  {lat:-3.7333,lng:39.6500,n:"Mida Creek",c:"Kenya",t:"moderate",a:"1,000 ha",note:"Major stopover for migratory birds. Community-led conservation effort."},
+  {lat:-4.0435,lng:39.6682,n:"Mombasa Mangroves",c:"Kenya",t:"high",a:"21,000 ha",note:"Kenya's most extensive mangroves — threatened by charcoal production and urban growth."},
+  {lat:-15.4167,lng:35.3333,n:"Shire River Delta",c:"Mozambique",t:"moderate",a:"9,000 ha",note:"Inland freshwater-influenced mangroves at the junction of Lake Malawi's outflow."},
+  {lat:-25.9692,lng:32.5804,n:"Maputo Bay Mangroves",c:"Mozambique",t:"high",a:"26,000 ha",note:"Critical nursery habitat for prawns and fish. Under pressure from charcoal production."},
+  {lat:-20.1609,lng:44.4142,n:"Tsiribihina Delta",c:"Madagascar",t:"critical",a:"327,000 ha",note:"Madagascar hosts 2% of world mangroves — all critically threatened by slash-and-burn farming."},
+  /* ── Americas ── */
+  {lat:25.7617,lng:-80.1918,n:"Everglades Mangroves",c:"USA",t:"high",a:"607,000 ha",note:"Largest mangrove ecosystem in North America. Part of the UNESCO World Heritage Site."},
+  {lat:10.6204,lng:-61.3700,n:"Caroni Swamp",c:"Trinidad",t:"moderate",a:"5,685 ha",note:"Home to Trinidad's national bird, the Scarlet Ibis. Protected as a Ramsar site."},
+  {lat:10.4878,lng:-83.5120,n:"Tortuguero Canals",c:"Costa Rica",t:"low",a:"18,946 ha",note:"Protected Caribbean coast mangroves in a national park shared with sea turtle nesting beaches."},
+  {lat:9.7489,lng:-83.7534,n:"Gulf of Nicoya Mangroves",c:"Costa Rica",t:"moderate",a:"22,000 ha",note:"Pacific coast estuary system; critical nursery ground for snapper and shrimp."},
+  {lat:8.9936,lng:-79.5197,n:"Gulf of Panama Mangroves",c:"Panama",t:"high",a:"170,000 ha",note:"Extensive Pacific mangroves impacted by shrimp farming and urban sprawl around Panama City."},
+  {lat:-14.8900,lng:-38.8700,n:"Camamu Bay",c:"Brazil",t:"moderate",a:"110,000 ha",note:"Extensive mangrove networks supporting artisanal fisheries communities."},
+  {lat:-2.5297,lng:-44.3028,n:"São Luís Mangroves",c:"Brazil",t:"critical",a:"83,000 ha",note:"Part of Brazil's largest contiguous mangrove coast — under pressure from port infrastructure."},
+  {lat:-3.7172,lng:-38.5437,n:"Ceará Mangroves",c:"Brazil",t:"high",a:"25,000 ha",note:"Semi-arid coast mangroves in NE Brazil — uniquely adapted but shrinking rapidly."},
+  /* ── Pacific & Oceania ── */
+  {lat:-18.1416,lng:178.4419,n:"Fiji Mangroves",c:"Fiji",t:"moderate",a:"43,000 ha",note:"Cover 7% of Fiji's coastline. Critical for storm protection and subsistence fishing."},
+  {lat:-8.5569,lng:147.2159,n:"Papua New Guinea Mangroves",c:"Papua New Guinea",t:"low",a:"480,000 ha",note:"World's 4th largest mangrove area. Largely intact but increasingly under logging pressure."},
+  {lat:-27.5598,lng:153.3593,n:"Moreton Bay Mangroves",c:"Australia",t:"low",a:"22,000 ha",note:"Part of the Moreton Bay Marine Park, supporting dugongs and migratory shorebirds."},
+  {lat:-17.7134,lng:168.3273,n:"Vanuatu Mangroves",c:"Vanuatu",t:"moderate",a:"2,500 ha",note:"Fringe mangroves on Pacific island coasts facing cyclone damage and sea level rise."},
 ];
+
 const TC={critical:'#e53935',high:'#fb8c00',moderate:'#fdd835',low:'#43a047'};
+
+const STREET_STYLE={
+  version:8,
+  sources:{'esri-street':{type:'raster',tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}'],tileSize:256,attribution:'© Esri, HERE, Garmin, FAO, NOAA'}},
+  layers:[{id:'esri-street-tiles',type:'raster',source:'esri-street'}]
+};
+const SAT_STYLE={
+  version:8,
+  sources:{'esri-sat':{type:'raster',tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],tileSize:256,attribution:'© Esri, Maxar, Earthstar Geographics'}},
+  layers:[{id:'esri-sat-tiles',type:'raster',source:'esri-sat'}]
+};
+
+let curStyle='street';
+
 function initMap(){
-  if(mapInited)return;mapInited=true;
-  const el=document.getElementById('lmap');if(!el||!window.L)return;
-  lmap=L.map('lmap',{center:[22,70],zoom:4,zoomControl:true});
-  sLayer=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:18}).addTo(lmap);
-  satLayer=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'© Esri',maxZoom:18});
-  SPOTS.forEach(s=>{
-    const col=TC[s.t]||'#43a047';
-    const ico=L.divIcon({className:'',html:`<div style="width:30px;height:30px;border-radius:50%;background:${col};border:2.5px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font-size:.65rem;font-family:'Bebas Neue',sans-serif;color:#fff;">${s.t==='critical'?'!':s.t[0].toUpperCase()}</div>`,iconSize:[30,30],iconAnchor:[15,15]});
-    L.marker([s.lat,s.lng],{icon:ico}).addTo(lmap).bindPopup(`<div style="font-family:'Barlow Condensed',sans-serif;min-width:195px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:1.05rem;letter-spacing:.05em;margin-bottom:.25rem;">${s.n}</div><div style="font-size:.74rem;color:#666;margin-bottom:.35rem;">📍 ${s.c}</div><div style="display:flex;gap:.35rem;margin-bottom:.45rem;flex-wrap:wrap;"><span style="padding:.12rem .42rem;border-radius:3px;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;background:${col}22;color:${col};border:1px solid ${col}44;">${s.t}</span><span style="padding:.12rem .42rem;border-radius:3px;font-size:.62rem;background:#eee;color:#555;">📏 ${s.a}</span></div><div style="font-size:.8rem;color:#444;line-height:1.5;">${s.note}</div></div>`,{maxWidth:255});
+  if(mapInited)return; mapInited=true;
+  const el=document.getElementById('lmap');
+  if(!el||!window.maplibregl)return;
+
+  /* Fallback: always dismiss skeleton after 6s regardless of tile load */
+  const skFallback=setTimeout(()=>{
+    const sk=document.getElementById('map-skeleton');
+    if(sk)sk.classList.add('gone');
+  },6000);
+
+  lmap=new maplibregl.Map({
+    container:'lmap',
+    style:STREET_STYLE,
+    center:[20,10],
+    zoom:1.8,
+    renderWorldCopies:false,
+    attributionControl:false
+  });
+
+  lmap.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-right');
+  lmap.addControl(new maplibregl.NavigationControl({showCompass:false}),'top-right');
+
+  lmap.on('load',()=>{
+    clearTimeout(skFallback);
+    /* Hide skeleton */
+    const sk=document.getElementById('map-skeleton');
+    if(sk)sk.classList.add('gone');
+
+    /* Add GeoJSON source for all global hotspots */
+    lmap.addSource('mangrove-hotspots',{
+      type:'geojson',
+      data:{
+        type:'FeatureCollection',
+        features:GLOBAL_SPOTS.map(s=>({
+          type:'Feature',
+          geometry:{type:'Point',coordinates:[s.lng,s.lat]},
+          properties:{name:s.n,country:s.c,threat:s.t,area:s.a,note:s.note,color:TC[s.t]||'#43a047'}
+        }))
+      }
+    });
+
+    /* Heatmap layer for density feel */
+    lmap.addLayer({
+      id:'hotspot-heat',
+      type:'heatmap',
+      source:'mangrove-hotspots',
+      maxzoom:5,
+      paint:{
+        'heatmap-weight':['match',['get','threat'],'critical',1,'high',0.7,'moderate',0.4,0.2],
+        'heatmap-intensity':['interpolate',['linear'],['zoom'],0,0.6,5,1.2],
+        'heatmap-color':['interpolate',['linear'],['heatmap-density'],0,'rgba(45,106,79,0)',0.2,'rgba(82,183,136,0.4)',0.6,'rgba(82,183,136,0.7)',1,'rgba(229,57,53,0.9)'],
+        'heatmap-radius':['interpolate',['linear'],['zoom'],0,14,5,30],
+        'heatmap-opacity':['interpolate',['linear'],['zoom'],3,0.8,5,0]
+      }
+    });
+
+    /* Circle markers */
+    lmap.addLayer({
+      id:'hotspot-circles',
+      type:'circle',
+      source:'mangrove-hotspots',
+      minzoom:2,
+      paint:{
+        'circle-radius':['interpolate',['linear'],['zoom'],2,5,6,12],
+        'circle-color':['get','color'],
+        'circle-stroke-width':2,
+        'circle-stroke-color':'rgba(255,255,255,0.85)',
+        'circle-opacity':['interpolate',['linear'],['zoom'],2,0.7,6,1]
+      }
+    });
+
+    /* Popup on click */
+    lmap.on('click','hotspot-circles',e=>{
+      const p=e.features[0].properties;
+      const col=p.color;
+      new maplibregl.Popup({offset:14,className:'mw-popup'})
+        .setLngLat(e.features[0].geometry.coordinates.slice())
+        .setHTML(`<div style="font-family:'Barlow Condensed',sans-serif;min-width:210px;padding:1rem;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.08rem;letter-spacing:.05em;margin-bottom:.25rem;color:#162c1e;">${p.name}</div>
+          <div style="font-size:.74rem;color:#555;margin-bottom:.4rem;">📍 ${p.country}</div>
+          <div style="display:flex;gap:.35rem;margin-bottom:.5rem;flex-wrap:wrap;">
+            <span style="padding:.12rem .42rem;border-radius:3px;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;background:${col}22;color:${col};border:1px solid ${col}44;">${p.threat}</span>
+            <span style="padding:.12rem .42rem;border-radius:3px;font-size:.62rem;background:#eee;color:#555;">📏 ${p.area}</span>
+          </div>
+          <div style="font-size:.8rem;color:#444;line-height:1.55;">${p.note}</div>
+        </div>`)
+        .addTo(lmap);
+    });
+    lmap.on('mouseenter','hotspot-circles',()=>{lmap.getCanvas().style.cursor='pointer';});
+    lmap.on('mouseleave','hotspot-circles',()=>{lmap.getCanvas().style.cursor='';});
   });
 }
+
 function setLayer(v){
   if(!lmap)return;
+  curStyle=v;
   document.getElementById('mcStr').classList.toggle('on',v==='street');
   document.getElementById('mcSat').classList.toggle('on',v==='sat');
-  if(v==='street'){if(lmap.hasLayer(satLayer))lmap.removeLayer(satLayer);if(!lmap.hasLayer(sLayer))sLayer.addTo(lmap);}
-  else{if(lmap.hasLayer(sLayer))lmap.removeLayer(sLayer);if(!lmap.hasLayer(satLayer))satLayer.addTo(lmap);}
+  lmap.setStyle(v==='street'?STREET_STYLE:SAT_STYLE);
+  /* Re-add data layers after style change */
+  lmap.once('styledata',()=>{
+    if(!lmap.getSource('mangrove-hotspots')){
+      lmap.addSource('mangrove-hotspots',{type:'geojson',data:{type:'FeatureCollection',features:GLOBAL_SPOTS.map(s=>({type:'Feature',geometry:{type:'Point',coordinates:[s.lng,s.lat]},properties:{name:s.n,country:s.c,threat:s.t,area:s.a,note:s.note,color:TC[s.t]||'#43a047'}}))}});
+      lmap.addLayer({id:'hotspot-circles',type:'circle',source:'mangrove-hotspots',paint:{'circle-radius':['interpolate',['linear'],['zoom'],2,5,6,12],'circle-color':['get','color'],'circle-stroke-width':2,'circle-stroke-color':'rgba(255,255,255,0.85)'}});
+    }
+  });
 }
 
 /* ── Species ── */
@@ -1751,18 +1933,40 @@ async function loadMag(){
   document.getElementById('magSpin').style.display='block';
   document.getElementById('magEmpty').style.display='none';
   document.getElementById('magStage').style.display='none';
-  const{data:iss}=await sb.from('magazine_issues').select('id,issue_number,title').order('issue_number');
+
+  /* Fetch all issues ordered by issue_number ascending (for pills display) */
+  const{data:iss}=await sb.from('magazine_issues').select('id,issue_number,title,published_at').order('issue_number',{ascending:true});
   allIss=iss||[];
+
+  /* Determine the most recent issue (highest published_at / highest issue_number) */
+  let activeIssue=null;
+  if(allIss.length){
+    activeIssue=allIss.reduce((latest,cur)=>{
+      const latestDate=latest.published_at?new Date(latest.published_at):new Date(0);
+      const curDate=cur.published_at?new Date(cur.published_at):new Date(0);
+      return curDate>=latestDate?cur:latest;
+    });
+  }
+
   const pills=document.getElementById('issuePills');pills.innerHTML='';
-  allIss.forEach((is,i)=>{
-    const b=document.createElement('button');b.className='ipill'+(i===0?' on':'');
+  allIss.forEach(is=>{
+    const isActive=activeIssue&&is.id===activeIssue.id;
+    const b=document.createElement('button');b.className='ipill'+(isActive?' on':'');b.dataset.issId=is.id;
     b.textContent=`Issue ${is.issue_number}`;
-    b.onclick=()=>{document.querySelectorAll('.ipill').forEach(p=>p.classList.remove('on'));b.classList.add('on');magOK=false;loadPgs(is.id);};
+    b.onclick=()=>{
+      document.querySelectorAll('.ipill').forEach(p=>p.classList.remove('on'));
+      b.classList.add('on');
+      magOK=false;
+      loadPgs(is.id);
+    };
     pills.appendChild(b);
   });
+
   document.getElementById('magSpin').style.display='none';
   if(!allIss.length){document.getElementById('magEmpty').style.display='block';return;}
-  await loadPgs(allIss[0].id);
+
+  /* Load the most recent issue on mount */
+  await loadPgs(activeIssue.id);
 }
 async function loadPgs(id){
   document.getElementById('magSpin').style.display='block';
