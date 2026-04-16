@@ -1260,12 +1260,50 @@ button{ font-family:inherit; cursor:pointer; }
       </div>
     </div>
   </div>
+
+  <!-- Carbon Calculator — moved here from Impact for thematic fit -->
+  <div class="wrap-sm" style="background:var(--surf);padding-top:2.5rem;padding-bottom:3rem;">
+    <div class="chip reveal">Carbon Calculator</div>
+    <h2 class="sect-title reveal" style="font-size:clamp(2rem,5vw,3.5rem);">YOUR CARBON<br><span style="color:var(--accent)">FOOTPRINT</span></h2>
+    <p style="color:var(--muted);margin-top:.65rem;font-size:.95rem;" class="reveal">Calculate how many mangrove trees would need to be protected to offset your travel emissions.</p>
+    <div class="calc-grid">
+      <div class="calc-p reveal slide-left">
+        <div class="calc-t">Add Your Trips</div>
+        <div class="calc-sub">Enter flights and driving to calculate annual CO₂ emissions</div>
+        <label class="fl">Trip Type</label>
+        <select class="fs" id="tripType" style="margin-bottom:.65rem;">
+          <option value="dom">Domestic flight (≤1,500 km)</option>
+          <option value="short">Short-haul flight (1,500–4,000 km)</option>
+          <option value="long">Long-haul flight (4,000+ km)</option>
+        </select>
+        <label class="fl">Distance (km, one-way)</label>
+        <div class="ci-row">
+          <input type="number" class="fi" id="tripDist" placeholder="e.g. 2500" min="0">
+          <button class="ci-add" onclick="addTrip()">+ Add</button>
+        </div>
+        <div class="trip-list" id="tripList"></div>
+        <label class="fl" style="margin-top:.75rem;">Car Driving (km/month)</label>
+        <input type="number" class="fi" id="carKm" placeholder="e.g. 800" min="0" style="margin-bottom:.85rem;">
+        <button class="btn-p" style="width:100%;justify-content:center;" onclick="calcCarbon()">🌿 Calculate My Footprint</button>
+      </div>
+      <div class="calc-p reveal slide-right">
+        <div class="calc-res" id="calcRes">
+          <div class="cr-row"><span class="cr-key">Annual CO₂</span><span class="cr-v" id="rCO2">0 t</span></div>
+          <div class="cr-row"><span class="cr-key">From Flights</span><span class="cr-v" id="rFlt">0 t</span></div>
+          <div class="cr-row"><span class="cr-key">From Driving</span><span class="cr-v" id="rDrv">0 t</span></div>
+          <div class="cr-trees"><span class="n" id="rTrees">0</span><span class="l">Mangrove trees needed to offset</span></div>
+        </div>
+        <div class="calc-ph" id="calcPh">
+          <div class="ico">🌿</div>
+          <p>Add your trips and hit Calculate to see your footprint</p>
+          <small>1 mangrove tree ≈ 0.5 tonnes CO₂/year sequestered</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="ft-bar"><div><div class="ft-brand">🌿 MangroveWatch</div><div class="ft-copy">© 2026</div></div><div class="ft-credit">Website by Reuben John</div></div>
 </div>
-
-<!-- ══════════════════════════════════════════
-     SPECIES PAGE
-══════════════════════════════════════════ -->
 <div class="page" id="pspecies">
   <div class="wrap" style="padding-bottom:1.5rem;">
     <div class="chip reveal">Explore</div>
@@ -1324,47 +1362,6 @@ button{ font-family:inherit; cursor:pointer; }
         <div id="fb-vp"><div id="fb-tr"></div><div class="pg-badge" id="pgB">1 / 1</div></div>
         <div class="th-strip" id="thStrip"></div>
         <div class="fb-ctrls"><button class="fb-btn" id="prevP">&#8592;</button><span class="pg-ctr" id="pgCtr">Page 1 of 1</span><button class="fb-btn" id="nextP">&#8594;</button></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Carbon calculator -->
-  <div class="wrap-sm" style="background:var(--surf);padding-top:2.5rem;">
-    <div class="chip reveal">Carbon Calculator</div>
-    <h2 class="sect-title reveal" style="font-size:clamp(2rem,5vw,3.5rem);">YOUR CARBON<br><span style="color:var(--accent)">FOOTPRINT</span></h2>
-    <p style="color:var(--muted);margin-top:.65rem;font-size:.95rem;" class="reveal">Calculate how many mangrove trees would need to be protected to offset your travel emissions.</p>
-    <div class="calc-grid">
-      <div class="calc-p reveal slide-left">
-        <div class="calc-t">Add Your Trips</div>
-        <div class="calc-sub">Enter flights and driving to calculate annual CO₂ emissions</div>
-        <label class="fl">Trip Type</label>
-        <select class="fs" id="tripType" style="margin-bottom:.65rem;">
-          <option value="dom">Domestic flight (≤1,500 km)</option>
-          <option value="short">Short-haul flight (1,500–4,000 km)</option>
-          <option value="long">Long-haul flight (4,000+ km)</option>
-        </select>
-        <label class="fl">Distance (km, one-way)</label>
-        <div class="ci-row">
-          <input type="number" class="fi" id="tripDist" placeholder="e.g. 2500" min="0">
-          <button class="ci-add" onclick="addTrip()">+ Add</button>
-        </div>
-        <div class="trip-list" id="tripList"></div>
-        <label class="fl" style="margin-top:.75rem;">Car Driving (km/month)</label>
-        <input type="number" class="fi" id="carKm" placeholder="e.g. 800" min="0" style="margin-bottom:.85rem;">
-        <button class="btn-p" style="width:100%;justify-content:center;" onclick="calcCarbon()">🌿 Calculate My Footprint</button>
-      </div>
-      <div class="calc-p reveal slide-right">
-        <div class="calc-res" id="calcRes">
-          <div class="cr-row"><span class="cr-key">Annual CO₂</span><span class="cr-v" id="rCO2">0 t</span></div>
-          <div class="cr-row"><span class="cr-key">From Flights</span><span class="cr-v" id="rFlt">0 t</span></div>
-          <div class="cr-row"><span class="cr-key">From Driving</span><span class="cr-v" id="rDrv">0 t</span></div>
-          <div class="cr-trees"><span class="n" id="rTrees">0</span><span class="l">Mangrove trees needed to offset</span></div>
-        </div>
-        <div class="calc-ph" id="calcPh">
-          <div class="ico">🌿</div>
-          <p>Add your trips and hit Calculate to see your footprint</p>
-          <small>1 mangrove tree ≈ 0.5 tonnes CO₂/year sequestered</small>
-        </div>
       </div>
     </div>
   </div>
@@ -1907,23 +1904,151 @@ function calcCarbon(){
   document.getElementById('calcPh').style.display='none';
 }
 
-/* ── Ambient audio ── */
-let audioCtx=null,aGain=null,aNoise=null,ambOn=false;
+/* ══════════════════════════════════════════
+   AMBIENT SOUNDSCAPE 2.0 — Three-layer spatial audio
+   Layer 1: Deep forest hum   (low rumble, centred)
+   Layer 2: Water lapping     (mid-freq, panned left)
+   Layer 3: Bird calls        (random intervals, panning wide)
+══════════════════════════════════════════ */
+let audioCtx=null,ambOn=false;
+let masterGain=null;            // overall on/off
+let forestSrc=null,waterSrc=null,birdTimer=null;
+
+/* ── Utility: pink-noise buffer ── */
+function makePinkNoise(ctx,seconds){
+  const sr=ctx.sampleRate,len=Math.floor(sr*seconds);
+  const buf=ctx.createBuffer(1,len,sr);
+  const d=buf.getChannelData(0);
+  let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+  for(let i=0;i<len;i++){
+    const w=Math.random()*2-1;
+    b0=.99886*b0+w*.0555179;b1=.99332*b1+w*.0750759;b2=.969*b2+w*.153852;
+    b3=.8665*b3+w*.3104856;b4=.55*b4+w*.5329522;b5=-.7616*b5-w*.016898;
+    d[i]=(b0+b1+b2+b3+b4+b5+b6+w*.5362)/6;b6=w*.115926;
+  }
+  return buf;
+}
+
+/* ── Utility: simple sine-wave buffer ── */
+function makeSineBuffer(ctx,freq,seconds){
+  const sr=ctx.sampleRate,len=Math.floor(sr*seconds);
+  const buf=ctx.createBuffer(1,len,sr);
+  const d=buf.getChannelData(0);
+  for(let i=0;i<len;i++) d[i]=Math.sin(2*Math.PI*freq*i/sr);
+  return buf;
+}
+
+/* ── Utility: build a PannerNode at (x,0,0) ── */
+function makePanner(ctx,x){
+  if(ctx.createStereoPanner){
+    const p=ctx.createStereoPanner();
+    p.pan.value=Math.max(-1,Math.min(1,x/3));
+    return p;
+  }
+  const p=ctx.createPanner();
+  p.panningModel='HRTF';p.distanceModel='inverse';
+  p.setPosition(x,0,0);
+  return p;
+}
+
+/* ── Layer 1: Deep forest hum (centred, very low) ── */
+function startForest(ctx){
+  const buf=makePinkNoise(ctx,4);
+  const src=ctx.createBufferSource();src.buffer=buf;src.loop=true;
+  const lp=ctx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=200;lp.Q.value=0.6;
+  const hp=ctx.createBiquadFilter();hp.type='highpass';hp.frequency.value=40;
+  const g=ctx.createGain();g.gain.value=0.055;
+  const pan=makePanner(ctx,0);   // dead centre
+  src.connect(lp);lp.connect(hp);hp.connect(g);g.connect(pan);pan.connect(masterGain);
+  src.start();
+  return src;
+}
+
+/* ── Layer 2: Water lapping (mid, panned left) ── */
+function startWater(ctx){
+  // Blend two pink-noise bufs at different lengths for organic variation
+  const buf1=makePinkNoise(ctx,3.7),buf2=makePinkNoise(ctx,5.1);
+  const src1=ctx.createBufferSource();src1.buffer=buf1;src1.loop=true;
+  const src2=ctx.createBufferSource();src2.buffer=buf2;src2.loop=true;
+  const bp=ctx.createBiquadFilter();bp.type='bandpass';bp.frequency.value=520;bp.Q.value=0.9;
+  const lp=ctx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=900;
+  const g=ctx.createGain();g.gain.value=0.075;
+  // Slow LFO to mimic wave rhythm ~0.15 Hz
+  const lfo=ctx.createOscillator();lfo.frequency.value=0.15;
+  const lfoGain=ctx.createGain();lfoGain.gain.value=0.045;
+  lfo.connect(lfoGain);lfoGain.connect(g.gain);lfo.start();
+  const pan=makePanner(ctx,-2.2);  // left of centre
+  src1.connect(bp);src2.connect(bp);bp.connect(lp);lp.connect(g);g.connect(pan);pan.connect(masterGain);
+  src1.start();src2.start(ctx.currentTime+1.2);
+  return [src1,src2,lfo];
+}
+
+/* ── Layer 3: Bird calls (random intervals, wide spatial panning) ── */
+function scheduleBird(ctx){
+  if(!ambOn)return;
+  // Each call: short band-limited chirp cluster
+  const delay=3000+Math.random()*7000;   // 3–10 s between calls
+  birdTimer=setTimeout(()=>{
+    if(!ambOn||!audioCtx)return;
+    const pan=makePanner(ctx,(Math.random()-0.5)*5);  // random across wide field
+    const g=ctx.createGain();g.gain.value=0;
+    pan.connect(masterGain);
+    const chirps=2+Math.floor(Math.random()*3);  // 2–4 chirps per call
+    for(let c=0;c<chirps;c++){
+      const baseFreq=1800+Math.random()*1400;  // 1800–3200 Hz
+      const buf=makeSineBuffer(ctx,baseFreq,.08+Math.random()*.06);
+      const src=ctx.createBufferSource();src.buffer=buf;
+      const env=ctx.createGain();
+      const t=ctx.currentTime+c*(.12+Math.random()*.1);
+      env.gain.setValueAtTime(0,t);
+      env.gain.linearRampToValueAtTime(0.18,t+.025);
+      env.gain.exponentialRampToValueAtTime(0.001,t+.12);
+      // Add a mild freq sweep for realism
+      const bp=ctx.createBiquadFilter();bp.type='bandpass';bp.frequency.value=baseFreq;bp.Q.value=4;
+      src.connect(bp);bp.connect(env);env.connect(pan);
+      src.start(t);src.stop(t+.18);
+    }
+    scheduleBird(ctx);
+  },delay);
+}
+
+/* ── Master toggle ── */
 function toggleAudio(){
   ambOn=!ambOn;
-  ['ambTog','ambTogMob'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.toggle('on',ambOn);});
+  ['ambTog','ambTogMob'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.classList.toggle('on',ambOn);
+  });
+
   if(ambOn){
+    /* First activation — build everything */
     if(!audioCtx){
       audioCtx=new(window.AudioContext||window.webkitAudioContext)();
-      const buf=audioCtx.createBuffer(1,4096,audioCtx.sampleRate);
-      const data=buf.getChannelData(0);let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
-      for(let i=0;i<4096;i++){const w=Math.random()*2-1;b0=.99886*b0+w*.0555179;b1=.99332*b1+w*.0750759;b2=.96900*b2+w*.1538520;b3=.86650*b3+w*.3104856;b4=.55000*b4+w*.5329522;b5=-.7616*b5-w*.0168980;data[i]=(b0+b1+b2+b3+b4+b5+b6+w*.5362)/6;b6=w*.115926;}
-      aNoise=audioCtx.createBufferSource();aNoise.buffer=buf;aNoise.loop=true;
-      const f=audioCtx.createBiquadFilter();f.type='lowpass';f.frequency.value=550;f.Q.value=0.4;
-      aGain=audioCtx.createGain();aGain.gain.value=0.11;
-      aNoise.connect(f);f.connect(aGain);aGain.connect(audioCtx.destination);aNoise.start();
-    }else if(aGain)aGain.gain.setTargetAtTime(.11,audioCtx.currentTime,.3);
-  }else{if(aGain)aGain.gain.setTargetAtTime(0,audioCtx.currentTime,.5);}
+      // Listener position (listener = user = centre)
+      if(audioCtx.listener.positionX){
+        audioCtx.listener.positionX.value=0;
+        audioCtx.listener.positionY.value=0;
+        audioCtx.listener.positionZ.value=1;
+      }
+      masterGain=audioCtx.createGain();
+      masterGain.gain.value=0;
+      masterGain.connect(audioCtx.destination);
+
+      forestSrc=startForest(audioCtx);
+      startWater(audioCtx);   // refs stored internally; we don't need to stop them independently
+    }
+    // Fade master in
+    masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+    masterGain.gain.setTargetAtTime(1,audioCtx.currentTime,.6);
+    scheduleBird(audioCtx);
+
+  }else{
+    /* Fade out master */
+    if(masterGain){
+      masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+      masterGain.gain.setTargetAtTime(0,audioCtx.currentTime,.8);
+    }
+    clearTimeout(birdTimer);birdTimer=null;
+  }
 }
 
 /* ── Magazine ── */
