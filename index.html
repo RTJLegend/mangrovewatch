@@ -1,0 +1,1906 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-fz="md">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>MangroveWatch — Protecting Coastal Ecosystems</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Serif+Display:ital@0;1&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Barlow+Condensed:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<style>
+/* ───────────────────────────────────────────
+   THEME TOKENS
+─────────────────────────────────────────── */
+:root{
+  --accent:#52b788; --accent2:#95d5b2; --accent3:#2d6a4f;
+  --r:0.75rem;
+}
+[data-theme="dark"]{
+  --bg:#0c1e14; --surf:#162c1e; --surf2:#1e3d2a; --surf3:#243f2c;
+  --border:rgba(82,183,136,.18); --border2:rgba(82,183,136,.08);
+  --text:#f2eedf; --muted:rgba(149,213,178,.7); --muted2:rgba(149,213,178,.38);
+  --nav:rgba(10,24,16,.93); --card:linear-gradient(148deg,#1e4832,#112a1c);
+  --inp:rgba(255,255,255,.05); --shadow:0 8px 32px rgba(0,0,0,.5);
+}
+[data-theme="light"]{
+  --bg:#edf5e8; --surf:#dcecd3; --surf2:#cbe0bb; --surf3:#b8d3a4;
+  --border:rgba(30,90,50,.2); --border2:rgba(30,90,50,.08);
+  --text:#162c1e; --muted:rgba(22,44,30,.68); --muted2:rgba(22,44,30,.38);
+  --nav:rgba(218,238,208,.96); --card:linear-gradient(148deg,#2a5e43,#1a3828);
+  --inp:rgba(0,0,0,.05); --shadow:0 8px 28px rgba(0,0,0,.14);
+}
+[data-theme="hc-dark"]{
+  --bg:#000; --surf:#0a0a0a; --surf2:#111; --surf3:#181818;
+  --border:rgba(0,255,130,.5); --border2:rgba(0,255,130,.18);
+  --text:#fff; --muted:rgba(255,255,255,.9); --muted2:rgba(255,255,255,.55);
+  --nav:rgba(0,0,0,.99); --card:linear-gradient(148deg,#002a18,#001008);
+  --inp:rgba(255,255,255,.08); --shadow:0 8px 32px rgba(0,255,130,.12);
+  --accent:#00ff88; --accent2:#80ffc4; --accent3:#00cc66;
+}
+[data-theme="hc-light"]{
+  --bg:#fff; --surf:#f2f9f2; --surf2:#e4f0e4; --surf3:#d5e8d5;
+  --border:rgba(0,80,40,.5); --border2:rgba(0,80,40,.18);
+  --text:#000; --muted:rgba(0,0,0,.85); --muted2:rgba(0,0,0,.5);
+  --nav:rgba(255,255,255,.99); --card:linear-gradient(148deg,#003a20,#002010);
+  --inp:rgba(0,0,0,.06); --shadow:0 8px 28px rgba(0,0,0,.2);
+  --accent:#005028; --accent2:#00804a; --accent3:#003a20;
+}
+[data-fz="sm"]{ font-size:14px; }
+[data-fz="md"]{ font-size:16px; }
+[data-fz="lg"]{ font-size:18px; }
+[data-fz="xl"]{ font-size:20px; }
+
+/* ───────────────────────────────────────────
+   RESET & BASE
+─────────────────────────────────────────── */
+*,*::before,*::after{ box-sizing:border-box; margin:0; padding:0; }
+html{ scroll-behavior:smooth; }
+body{
+  font-family:'Crimson Text',serif;
+  background:var(--bg); color:var(--text);
+  overflow-x:hidden; transition:background .3s,color .3s;
+}
+/* Grain overlay */
+body::after{
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:9995;
+  opacity:.25;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.12'/%3E%3C/svg%3E");
+}
+img{ max-width:100%; display:block; }
+a{ text-decoration:none; }
+button{ font-family:inherit; cursor:pointer; }
+
+/* ───────────────────────────────────────────
+   CUSTOM CURSOR
+─────────────────────────────────────────── */
+#cur{
+  position:fixed; width:20px; height:20px; border-radius:50%;
+  border:2px solid var(--accent); pointer-events:none; z-index:99999;
+  transform:translate(-50%,-50%);
+  transition:width .2s,height .2s,background .2s,border-color .2s;
+  mix-blend-mode:difference;
+}
+#cur.big{ width:36px; height:36px; background:rgba(82,183,136,.15); }
+@media(hover:none){ #cur{ display:none; } }
+
+/* ───────────────────────────────────────────
+   LOADING SCREEN
+─────────────────────────────────────────── */
+#ls{
+  position:fixed; inset:0; z-index:99998;
+  background:#0c1e14; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:1.5rem;
+  transition:opacity .65s,visibility .65s;
+}
+#ls.gone{ opacity:0; visibility:hidden; pointer-events:none; }
+.ls-logo{
+  font-family:'Bebas Neue',sans-serif; font-size:2rem;
+  letter-spacing:.28em; color:#52b788;
+  display:flex; align-items:center; gap:.6rem;
+  animation:pulse 1.8s ease-in-out infinite;
+}
+@keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.45;} }
+.ls-leaves{ display:flex; gap:.45rem; }
+.ls-leaf{
+  width:9px; height:9px; border-radius:50% 10% 50% 10%;
+  background:#52b788; animation:lb 1s ease-in-out infinite;
+}
+.ls-leaf:nth-child(2){ animation-delay:.15s; background:#2d6a4f; }
+.ls-leaf:nth-child(3){ animation-delay:.30s; background:#95d5b2; }
+.ls-leaf:nth-child(4){ animation-delay:.45s; background:#2d6a4f; }
+.ls-leaf:nth-child(5){ animation-delay:.60s; }
+@keyframes lb{ 0%,100%{transform:translateY(0) scale(1);opacity:.5;} 50%{transform:translateY(-11px) scale(1.2);opacity:1;} }
+.ls-bar{ width:180px; height:2px; background:rgba(82,183,136,.15); border-radius:1px; overflow:hidden; }
+.ls-fill{ height:100%; background:#52b788; animation:lf 2s cubic-bezier(.4,0,.2,1) forwards; }
+@keyframes lf{ to{width:100%;} }
+.ls-msg{ font-family:'Barlow Condensed',sans-serif; font-size:.7rem; letter-spacing:.3em; text-transform:uppercase; color:rgba(149,213,178,.35); }
+
+/* ───────────────────────────────────────────
+   TUTORIAL
+─────────────────────────────────────────── */
+#tut{
+  position:fixed; inset:0; z-index:9997;
+  background:rgba(4,12,7,.94); backdrop-filter:blur(10px);
+  display:none; align-items:center; justify-content:center; padding:1rem;
+}
+#tut.on{ display:flex; }
+.tut-box{
+  background:linear-gradient(150deg,#1b3d28,#0e2018);
+  border:1px solid var(--border); border-radius:14px;
+  width:min(94vw,500px); overflow:hidden;
+  box-shadow:0 32px 80px rgba(0,0,0,.7);
+}
+.tut-bar{ height:3px; background:linear-gradient(90deg,var(--accent),var(--accent2)); transition:width .4s ease; }
+.tut-body{ padding:2rem 2rem 1.5rem; }
+.tut-step{ font-family:'Barlow Condensed',sans-serif; font-size:.66rem; letter-spacing:.3em; text-transform:uppercase; color:var(--accent); margin-bottom:.55rem; }
+.tut-icon{ font-size:2.4rem; margin-bottom:.85rem; }
+.tut-title{ font-family:'Bebas Neue',sans-serif; font-size:1.75rem; letter-spacing:.06em; color:var(--text); margin-bottom:.65rem; line-height:1; }
+.tut-desc{ font-size:1rem; line-height:1.72; color:var(--muted); }
+.tut-desc strong{ color:var(--accent); font-style:italic; }
+.tut-vis{ margin:1rem 0; background:rgba(0,0,0,.25); border-radius:6px; padding:.85rem 1rem; border:1px solid var(--border2); font-family:'Barlow Condensed',sans-serif; font-size:.8rem; letter-spacing:.05em; color:var(--accent2); }
+.tut-vis .kv{ display:flex; align-items:center; gap:.7rem; padding:.25rem 0; }
+.tut-foot{ padding:1rem 2rem 1.6rem; display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+.tut-dots{ display:flex; gap:.4rem; }
+.tut-dot{ width:7px; height:7px; border-radius:50%; background:var(--border); transition:all .3s; }
+.tut-dot.on{ background:var(--accent); transform:scale(1.2); }
+.tut-acts{ display:flex; gap:.6rem; align-items:center; }
+.tut-skip{ background:none; border:none; color:var(--muted2); font-family:'Barlow Condensed',sans-serif; font-size:.76rem; letter-spacing:.1em; text-transform:uppercase; cursor:pointer; padding:.45rem; transition:color .2s; }
+.tut-skip:hover{ color:var(--muted); }
+
+/* ───────────────────────────────────────────
+   NAV
+─────────────────────────────────────────── */
+#nav{
+  position:fixed; top:0; left:0; right:0; z-index:1000;
+  height:60px; display:flex; align-items:center;
+  justify-content:space-between; padding:0 clamp(1rem,3vw,2.5rem);
+  background:var(--nav); backdrop-filter:blur(16px) saturate(1.4);
+  border-bottom:1px solid var(--border); transition:background .3s;
+}
+.nav-logo{
+  font-family:'Bebas Neue',sans-serif; font-size:1.22rem;
+  letter-spacing:.22em; color:var(--accent);
+  display:flex; align-items:center; gap:.4rem;
+  cursor:pointer; flex-shrink:0; border:none; background:none;
+}
+.nav-logo svg{ width:20px; height:20px; }
+.nav-desktop{ display:flex; align-items:center; gap:.15rem; list-style:none; }
+.nav-btn{
+  font-family:'Barlow Condensed',sans-serif; font-size:.75rem;
+  letter-spacing:.12em; text-transform:uppercase;
+  color:var(--muted); background:none; border:none;
+  padding:.3rem .75rem; border-radius:4px; cursor:pointer;
+  position:relative; transition:color .2s;
+  white-space:nowrap;
+}
+.nav-btn::after{
+  content:''; position:absolute; bottom:0; left:.75rem; right:.75rem;
+  height:1.5px; background:var(--accent);
+  transform:scaleX(0); transform-origin:left; transition:transform .22s;
+}
+.nav-btn:hover,.nav-btn.act{ color:var(--accent); }
+.nav-btn.act::after,.nav-btn:hover::after{ transform:scaleX(1); }
+.nav-right{ display:flex; align-items:center; gap:.6rem; flex-shrink:0; }
+
+/* Settings */
+.set-wrap{ position:relative; }
+.set-btn{
+  display:flex; align-items:center; gap:.35rem;
+  background:var(--inp); border:1px solid var(--border);
+  color:var(--muted); padding:.3rem .7rem; border-radius:6px;
+  font-family:'Barlow Condensed',sans-serif; font-size:.72rem;
+  letter-spacing:.1em; text-transform:uppercase; cursor:pointer;
+  transition:all .2s; white-space:nowrap;
+}
+.set-btn:hover{ background:rgba(82,183,136,.1); color:var(--accent); }
+.set-btn svg{ width:14px; height:14px; flex-shrink:0; }
+.set-panel{
+  position:absolute; top:calc(100% + 8px); right:0;
+  width:min(92vw,285px); background:var(--surf);
+  border:1px solid var(--border); border-radius:10px;
+  padding:1rem; box-shadow:var(--shadow);
+  display:none; flex-direction:column; gap:.85rem;
+  z-index:2001;
+}
+.set-panel.on{ display:flex; }
+.s-head{ font-family:'Barlow Condensed',sans-serif; font-size:.63rem; letter-spacing:.22em; text-transform:uppercase; color:var(--muted2); margin-bottom:.35rem; }
+.s-row{ display:flex; align-items:center; justify-content:space-between; gap:.5rem; }
+.s-lbl{ font-family:'Barlow Condensed',sans-serif; font-size:.76rem; letter-spacing:.07em; color:var(--muted); }
+.s-sel{
+  background:var(--inp); border:1px solid var(--border); border-radius:4px;
+  color:var(--text); font-family:'Barlow Condensed',sans-serif;
+  font-size:.76rem; padding:.28rem .5rem; outline:none; cursor:pointer;
+}
+.s-sel option{ background:var(--surf); }
+.theme-grid{ display:flex; gap:.3rem; flex-wrap:wrap; }
+.theme-btn{
+  padding:.25rem .6rem; border-radius:4px;
+  font-family:'Barlow Condensed',sans-serif; font-size:.67rem; letter-spacing:.07em;
+  border:1px solid var(--border); background:none; color:var(--muted); cursor:pointer;
+  transition:all .18s; white-space:nowrap;
+}
+.theme-btn.on,.theme-btn:hover{ background:var(--accent); color:var(--bg); border-color:var(--accent); }
+.tog{
+  position:relative; width:36px; height:20px; border-radius:99px;
+  background:var(--border); border:none; cursor:pointer; transition:background .2s; flex-shrink:0;
+}
+.tog::after{ content:''; position:absolute; width:14px; height:14px; border-radius:50%; background:#fff; top:3px; left:3px; transition:left .2s; }
+.tog.on{ background:var(--accent); }
+.tog.on::after{ left:19px; }
+
+/* Hamburger */
+.ham{
+  display:none; background:none; border:none; cursor:pointer;
+  flex-direction:column; gap:5px; padding:4px;
+}
+.ham span{ display:block; width:22px; height:2px; background:var(--muted); border-radius:2px; transition:all .3s; }
+.ham.on span:nth-child(1){ transform:rotate(45deg) translate(5px,5px); }
+.ham.on span:nth-child(2){ opacity:0; }
+.ham.on span:nth-child(3){ transform:rotate(-45deg) translate(5px,-5px); }
+
+/* Mobile drawer */
+#mob-nav{
+  position:fixed; top:60px; left:0; right:0; bottom:0; z-index:999;
+  background:var(--nav); backdrop-filter:blur(16px);
+  transform:translateX(100%); transition:transform .32s cubic-bezier(.4,0,.2,1);
+  overflow-y:auto; padding:1rem;
+}
+#mob-nav.on{ transform:translateX(0); }
+.mob-links{ display:flex; flex-direction:column; gap:.15rem; }
+.mob-link{
+  display:block; padding:.9rem 1rem;
+  font-family:'Barlow Condensed',sans-serif; font-size:.88rem;
+  letter-spacing:.14em; text-transform:uppercase;
+  color:var(--muted); border-bottom:1px solid var(--border2);
+  background:none; border-left:none; border-right:none; border-top:none;
+  text-align:left; width:100%; cursor:pointer; transition:color .2s;
+}
+.mob-link:hover,.mob-link.act{ color:var(--accent); }
+.mob-settings{
+  margin-top:1.25rem; padding:1rem;
+  background:var(--surf2); border-radius:8px; border:1px solid var(--border2);
+}
+.mob-set-title{ font-family:'Bebas Neue',sans-serif; font-size:1rem; letter-spacing:.1em; color:var(--accent); margin-bottom:.8rem; }
+
+/* ───────────────────────────────────────────
+   PAGE SYSTEM
+─────────────────────────────────────────── */
+.page{ display:none; min-height:100vh; animation:pgIn .38s ease; }
+.page.on{ display:block; }
+@keyframes pgIn{ from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:translateY(0);} }
+
+/* ───────────────────────────────────────────
+   SCROLL REVEAL
+─────────────────────────────────────────── */
+.reveal{
+  opacity:0; transform:translateY(32px);
+  transition:opacity .7s cubic-bezier(.22,1,.36,1), transform .7s cubic-bezier(.22,1,.36,1);
+}
+.reveal.slide-left{ transform:translateX(-40px); }
+.reveal.slide-right{ transform:translateX(40px); }
+.reveal.vis{ opacity:1; transform:translate(0); }
+.reveal-d1{ transition-delay:.1s; }
+.reveal-d2{ transition-delay:.2s; }
+.reveal-d3{ transition-delay:.3s; }
+.reveal-d4{ transition-delay:.4s; }
+
+/* ───────────────────────────────────────────
+   COMMON COMPONENTS
+─────────────────────────────────────────── */
+.btn-p{
+  display:inline-flex; align-items:center; gap:.45rem;
+  padding:.72rem 1.55rem; background:var(--accent); color:var(--bg);
+  font-family:'Barlow Condensed',sans-serif; font-size:.82rem;
+  font-weight:700; letter-spacing:.14em; text-transform:uppercase;
+  border:none; border-radius:3px; cursor:pointer;
+  transition:all .22s; box-shadow:0 4px 16px rgba(82,183,136,.25);
+}
+.btn-p:hover{ background:var(--accent2); transform:translateY(-2px); }
+.btn-o{
+  display:inline-flex; align-items:center; gap:.45rem;
+  padding:.72rem 1.55rem; border:1px solid var(--border);
+  color:var(--accent); background:transparent;
+  font-family:'Barlow Condensed',sans-serif; font-size:.82rem;
+  font-weight:700; letter-spacing:.14em; text-transform:uppercase;
+  border-radius:3px; cursor:pointer; transition:all .22s;
+}
+.btn-o:hover{ background:rgba(82,183,136,.08); border-color:var(--accent); }
+.wrap{ padding:5rem clamp(1.25rem,5vw,5rem); }
+.wrap-sm{ padding:3rem clamp(1.25rem,5vw,5rem); }
+.chip{
+  font-family:'Barlow Condensed',sans-serif; font-size:.68rem;
+  letter-spacing:.32em; text-transform:uppercase; color:var(--accent);
+  display:flex; align-items:center; gap:.65rem; margin-bottom:.8rem;
+}
+.chip::before{ content:''; display:block; width:24px; height:1px; background:var(--accent); }
+.sect-title{ font-family:'Bebas Neue',sans-serif; font-size:clamp(2.4rem,6vw,5rem); line-height:.92; letter-spacing:.03em; }
+.sect-sub{ font-size:1.05rem; line-height:1.78; color:var(--muted); margin-top:1rem; max-width:660px; }
+/* Form elements */
+.fg{ margin-bottom:1.1rem; }
+.fl{ display:block; font-family:'Barlow Condensed',sans-serif; font-size:.7rem; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); margin-bottom:.4rem; }
+.fi,.fs,.ft{
+  width:100%; padding:.65rem .9rem;
+  background:var(--inp); border:1px solid var(--border); border-radius:4px;
+  color:var(--text); font-family:'Crimson Text',serif; font-size:.96rem;
+  outline:none; transition:border-color .2s;
+}
+.fi:focus,.fs:focus,.ft:focus{ border-color:var(--accent); }
+.ft{ resize:vertical; }
+.fs option{ background:var(--surf); }
+
+/* Footer (mini) */
+.ft-bar{
+  background:var(--bg); border-top:1px solid var(--border);
+  padding:1.6rem clamp(1.25rem,5vw,5rem);
+  display:flex; justify-content:space-between; align-items:center;
+  flex-wrap:wrap; gap:.75rem;
+}
+.ft-brand{ font-family:'Bebas Neue',sans-serif; font-size:1rem; letter-spacing:.2em; color:var(--accent); }
+.ft-copy{ font-family:'Barlow Condensed',sans-serif; font-size:.68rem; letter-spacing:.08em; color:var(--muted2); }
+.ft-credit{ font-family:'Barlow Condensed',sans-serif; font-size:.68rem; letter-spacing:.1em; color:var(--muted2); cursor:default; user-select:none; }
+
+/* ───────────────────────────────────────────
+   HOME PAGE
+─────────────────────────────────────────── */
+#ph{ background:var(--bg); }
+
+/* HERO — photo only, zero SVG art */
+#hero{
+  min-height:100vh; display:flex; flex-direction:column;
+  justify-content:flex-end; padding:7rem clamp(1.25rem,5vw,5rem) 5rem;
+  position:relative; overflow:hidden;
+}
+.hero-photo{
+  position:absolute; inset:0; z-index:0;
+  background:
+    linear-gradient(to bottom, rgba(6,16,9,.6) 0%, rgba(6,16,9,.18) 42%, rgba(6,16,9,.88) 100%),
+    url('https://www.rgs.org/media/l45fj05l/mangroves-with-glassy-water-and-blue-sky.jpg') center / cover no-repeat;
+}
+.hero-tag{
+  font-family:'Barlow Condensed',sans-serif; font-size:.7rem;
+  letter-spacing:.32em; text-transform:uppercase; color:var(--accent);
+  margin-bottom:1.1rem; position:relative; z-index:1;
+  display:flex; align-items:center; gap:.7rem;
+  opacity:0; animation:fu .65s .1s forwards ease;
+}
+.hero-tag::before{ content:''; display:block; width:30px; height:1px; background:var(--accent); }
+.hero-h{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:clamp(4.2rem,12vw,10.5rem);
+  line-height:.88; letter-spacing:.025em;
+  position:relative; z-index:1;
+  text-shadow:0 6px 36px rgba(0,0,0,.65);
+}
+.hero-line{ display:block; transform:translateX(110%); opacity:0; transition:transform .82s cubic-bezier(.22,1,.36,1), opacity .5s ease; }
+.hero-line.in{ transform:translateX(0); opacity:1; }
+.hero-line:nth-child(2){ transition-delay:.12s; }
+.hero-line:nth-child(3){ transition-delay:.24s; }
+.hl-acc{ color:var(--accent); }
+/* THREAT fully opaque — matches --text */
+.hl-thr{ color:var(--text); }
+.hero-sub{
+  font-family:'DM Serif Display',serif; font-style:italic;
+  font-size:clamp(.96rem,1.8vw,1.2rem);
+  color:rgba(216,243,220,.9); margin-top:1.35rem; max-width:470px;
+  position:relative; z-index:1; line-height:1.65;
+  text-shadow:0 2px 12px rgba(0,0,0,.5);
+  opacity:0; animation:fu .65s .52s forwards ease;
+}
+.hero-cta{
+  margin-top:2.2rem; display:flex; gap:.85rem; flex-wrap:wrap;
+  position:relative; z-index:1;
+  opacity:0; animation:fu .65s .7s forwards ease;
+}
+@keyframes fu{ from{opacity:0;transform:translateY(16px);} to{opacity:1;transform:translateY(0);} }
+.hero-scroll{
+  position:absolute; bottom:1.8rem; left:50%; transform:translateX(-50%);
+  z-index:1; display:flex; flex-direction:column; align-items:center; gap:.4rem;
+  animation:bob 2.2s ease-in-out infinite;
+}
+.hero-scroll span{ font-family:'Barlow Condensed',sans-serif; font-size:.6rem; letter-spacing:.2em; text-transform:uppercase; color:rgba(149,213,178,.4); }
+@keyframes bob{ 0%,100%{transform:translateX(-50%) translateY(0);} 50%{transform:translateX(-50%) translateY(7px);} }
+.hero-scroll svg{ opacity:.4; }
+
+/* Weather widget */
+.ww{
+  position:absolute; bottom:3rem; right:clamp(1.25rem,5vw,5rem); z-index:2;
+  background:rgba(10,24,16,.78); backdrop-filter:blur(12px);
+  border:1px solid var(--border); border-radius:10px;
+  padding:.85rem 1.05rem; min-width:155px;
+}
+.ww-loc{ font-family:'Barlow Condensed',sans-serif; font-size:.62rem; letter-spacing:.18em; text-transform:uppercase; color:var(--muted2); margin-bottom:.4rem; }
+.ww-row{ display:flex; align-items:center; gap:.55rem; }
+.ww-ico{ font-size:1.55rem; }
+.ww-tmp{ font-family:'Bebas Neue',sans-serif; font-size:2rem; color:var(--accent); line-height:1; }
+.ww-info{ font-family:'Barlow Condensed',sans-serif; font-size:.66rem; letter-spacing:.06em; color:var(--muted2); margin-top:.35rem; }
+.tide-tr{ height:3px; background:var(--border2); border-radius:2px; margin-top:.4rem; overflow:hidden; }
+.tide-fl{ height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); border-radius:2px; transition:width 1.2s ease; }
+
+/* Quick-nav cards */
+.qnav{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,195px),1fr));
+  gap:1.1rem; padding:3rem clamp(1.25rem,5vw,5rem);
+  background:var(--surf);
+}
+.qcard{
+  background:var(--card); border:1px solid var(--border); border-radius:8px;
+  padding:1.4rem 1.25rem; cursor:pointer;
+  transition:transform .25s,box-shadow .25s;
+  display:flex; flex-direction:column; gap:.5rem;
+}
+.qcard:hover{ transform:translateY(-4px); box-shadow:var(--shadow); }
+.qcard-ico{ font-size:1.7rem; }
+.qcard-title{ font-family:'Bebas Neue',sans-serif; font-size:1.1rem; letter-spacing:.05em; color:var(--text); }
+.qcard-desc{ font-size:.85rem; color:var(--muted); line-height:1.5; }
+
+/* ── ABOUT section (home page) ── */
+.about-grid{
+  display:grid; grid-template-columns:1fr 1fr;
+  gap:3rem; align-items:center;
+}
+.about-body{ }
+.about-img-wrap{
+  border-radius:8px; overflow:hidden;
+  box-shadow:var(--shadow); aspect-ratio:4/3;
+  background:var(--surf2);
+  position:relative;
+}
+.about-img-wrap img{ width:100%; height:100%; object-fit:cover; }
+.about-img-overlay{
+  position:absolute; inset:0;
+  background:linear-gradient(135deg,rgba(82,183,136,.15),transparent 60%);
+}
+.stat-row{ display:flex; gap:2rem; margin-top:1.75rem; flex-wrap:wrap; }
+.stat-item{ display:flex; flex-direction:column; gap:.25rem; }
+.stat-num{ font-family:'Bebas Neue',sans-serif; font-size:2.8rem; color:var(--accent); line-height:1; letter-spacing:.02em; }
+.stat-lbl{ font-family:'Barlow Condensed',sans-serif; font-size:.7rem; letter-spacing:.15em; text-transform:uppercase; color:var(--muted2); }
+
+/* ── FEEDBACK + QUERY section (home page) ── */
+#feedback-section{ background:var(--surf); }
+.fb-grid{
+  display:grid; grid-template-columns:1fr 1fr;
+  gap:2rem; margin-top:2.2rem;
+}
+.fb-panel{
+  background:var(--surf2); border:1px solid var(--border);
+  border-radius:10px; padding:1.85rem;
+}
+.fb-title{ font-family:'Bebas Neue',sans-serif; font-size:1.45rem; letter-spacing:.08em; color:var(--accent); margin-bottom:.3rem; }
+.fb-sub{ font-size:.9rem; color:var(--muted2); margin-bottom:1.35rem; line-height:1.55; }
+.star-row{ display:flex; gap:.38rem; margin-bottom:1rem; }
+.star{ font-size:1.55rem; cursor:pointer; opacity:.3; transition:opacity .2s,transform .15s; }
+.star.on,.star:hover{ opacity:1; transform:scale(1.12); }
+.fb-ok{
+  display:none; text-align:center; padding:1.35rem;
+  background:rgba(82,183,136,.08); border:1px solid var(--border);
+  border-radius:6px; color:var(--accent);
+  font-family:'DM Serif Display',serif; font-size:1.05rem; font-style:italic;
+}
+
+/* ── CONTACT MINI (home footer) ── */
+.contact-strip{
+  background:linear-gradient(130deg,rgba(30,90,60,.85),rgba(15,46,30,.9));
+  border-top:1px solid var(--border); border-bottom:1px solid var(--border);
+  padding:1.5rem clamp(1.25rem,5vw,5rem);
+  display:flex; align-items:center; justify-content:space-between;
+  flex-wrap:wrap; gap:1rem;
+}
+.cs-left h3{ font-family:'DM Serif Display',serif; font-size:1.2rem; color:var(--text); margin-bottom:.25rem; }
+.cs-left p{ font-size:.88rem; color:var(--muted); }
+.cs-links{ display:flex; gap:.65rem; flex-wrap:wrap; }
+.cs-link{
+  display:inline-flex; align-items:center; gap:.4rem;
+  padding:.45rem .95rem; border-radius:5px;
+  font-family:'Barlow Condensed',sans-serif; font-size:.74rem;
+  letter-spacing:.08em; text-transform:uppercase;
+  text-decoration:none; transition:all .2s;
+  border:1px solid var(--border); color:var(--accent);
+}
+.cs-link:hover{ background:rgba(82,183,136,.1); }
+.cs-link.ig{ border-color:rgba(200,120,255,.35); color:#c47ee0; }
+.cs-link.ig:hover{ background:rgba(200,120,255,.08); }
+.cs-link svg{ width:13px; height:13px; flex-shrink:0; }
+
+/* ───────────────────────────────────────────
+   CONSERVATION PAGE
+─────────────────────────────────────────── */
+#pc{ background:var(--surf); }
+
+/* Animated charts */
+.chart-band{ display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr)); gap:1.5rem; margin-top:2.2rem; }
+.cc{
+  background:linear-gradient(160deg,rgba(45,106,79,.38),rgba(18,36,24,.8));
+  border:1px solid var(--border); border-radius:8px;
+  padding:1.6rem 1.4rem; display:flex; flex-direction:column;
+  align-items:center; gap:.9rem; position:relative; overflow:hidden;
+}
+[data-theme="light"] .cc{ background:rgba(180,230,200,.45); }
+.cc::after{ content:''; position:absolute; bottom:0; left:0; right:0; height:2px; background:linear-gradient(90deg,var(--accent),transparent); }
+.cc-label{ font-family:'Barlow Condensed',sans-serif; font-size:.7rem; letter-spacing:.15em; text-transform:uppercase; color:var(--muted); text-align:center; }
+.cc-val{ font-family:'Bebas Neue',sans-serif; font-size:2.5rem; color:var(--accent); line-height:1; }
+.cc-desc{ font-size:.86rem; color:var(--muted2); line-height:1.55; text-align:center; }
+/* Donut */
+.donut-w{ position:relative; width:105px; height:105px; }
+.donut-w svg{ transform:rotate(-90deg); }
+.d-bg{ fill:none; stroke:var(--border2); stroke-width:10; }
+.d-fill{ fill:none; stroke:var(--accent); stroke-width:10; stroke-linecap:round; stroke-dasharray:0 330; transition:stroke-dasharray 1.6s cubic-bezier(.4,0,.2,1); }
+.d-lbl{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:'Bebas Neue',sans-serif; font-size:1.45rem; color:var(--accent); }
+/* Bar chart */
+.bar-ch{ width:100%; display:flex; flex-direction:column; gap:.48rem; }
+.bc-row{ display:flex; align-items:center; gap:.5rem; }
+.bc-lbl{ font-family:'Barlow Condensed',sans-serif; font-size:.66rem; letter-spacing:.04em; color:var(--muted); white-space:nowrap; min-width:60px; }
+.bc-tr{ flex:1; height:9px; background:var(--border2); border-radius:5px; overflow:hidden; }
+.bc-fl{ height:100%; border-radius:5px; width:0%; transition:width 1.4s cubic-bezier(.4,0,.2,1); }
+.bc-fl.c1{ background:linear-gradient(90deg,var(--accent),var(--accent2)); }
+.bc-fl.c2{ background:linear-gradient(90deg,#5a9e6f,#3a7a50); }
+.bc-fl.c3{ background:linear-gradient(90deg,#8aae60,#6a8a40); }
+.bc-num{ font-family:'Barlow Condensed',sans-serif; font-size:.68rem; color:var(--accent); min-width:40px; text-align:right; }
+/* Sparkline */
+.sp-w{ width:100%; position:relative; }
+.sp-path{ stroke:var(--accent); stroke-width:2; fill:none; stroke-dasharray:420; stroke-dashoffset:420; transition:stroke-dashoffset 1.8s cubic-bezier(.4,0,.2,1); }
+.sp-tip{
+  position:absolute; background:var(--surf); border:1px solid var(--border);
+  border-radius:6px; padding:.45rem .7rem;
+  font-family:'Barlow Condensed',sans-serif; font-size:.7rem; color:var(--muted);
+  pointer-events:none; display:none; z-index:10; min-width:175px; line-height:1.45;
+}
+.sp-tip b{ color:var(--accent); display:block; font-size:.82rem; }
+
+/* Interactive metric comparison */
+.comp-wrap{ margin-top:3rem; }
+.metric-pills{ display:flex; gap:.45rem; flex-wrap:wrap; margin-bottom:1.35rem; }
+.mpill{
+  padding:.36rem .82rem; border-radius:4px;
+  font-family:'Barlow Condensed',sans-serif; font-size:.74rem; letter-spacing:.1em; text-transform:uppercase;
+  border:1px solid var(--border); background:none; color:var(--muted); cursor:pointer; transition:all .2s;
+}
+.mpill.on{ background:var(--accent); color:var(--bg); border-color:var(--accent); }
+.comp-chart{ background:var(--card); border:1px solid var(--border); border-radius:8px; padding:1.6rem; }
+[data-theme="light"] .comp-chart{ background:rgba(180,230,200,.35); }
+.comp-label{ font-family:'DM Serif Display',serif; font-style:italic; font-size:1rem; color:var(--muted); margin-bottom:.9rem; }
+.comp-rows{ display:flex; flex-direction:column; gap:.6rem; }
+.comp-row{ display:grid; grid-template-columns:105px 1fr 72px; align-items:center; gap:.65rem; }
+.cr-lbl{ font-family:'Barlow Condensed',sans-serif; font-size:.76rem; letter-spacing:.05em; color:var(--muted); }
+.cr-tr{ height:20px; background:var(--border2); border-radius:4px; overflow:hidden; }
+.cr-fl{ height:100%; border-radius:4px; width:0%; transition:width 1.2s cubic-bezier(.4,0,.2,1); display:flex; align-items:center; justify-content:flex-end; padding-right:.4rem; font-family:'Barlow Condensed',sans-serif; font-size:.68rem; color:var(--bg); white-space:nowrap; }
+.cr-fl.e1{ background:linear-gradient(90deg,var(--accent),var(--accent2)); }
+.cr-fl.e2{ background:linear-gradient(90deg,#5a9e6f,#8acc9a); }
+.cr-fl.e3{ background:linear-gradient(90deg,#8aae60,#b0d080); }
+.cr-unit{ font-family:'Barlow Condensed',sans-serif; font-size:.66rem; color:var(--muted2); text-align:right; }
+
+/* Info cards */
+.cards-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,268px),1fr)); gap:1.6rem; margin-top:2.2rem; }
+.paper-card{
+  background:linear-gradient(148deg,#f3eedb,#e6dfc5); color:#162c1e;
+  border-radius:6px; padding:1.7rem; position:relative; overflow:hidden;
+  box-shadow:0 1px 3px rgba(0,0,0,.12),0 6px 20px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.8);
+}
+.paper-card::before{ content:''; position:absolute; inset:0; background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E"); pointer-events:none; }
+.pc-ico{ font-size:1.75rem; margin-bottom:.8rem; }
+.pc-h{ font-family:'DM Serif Display',serif; font-size:1.22rem; color:#1a3020; margin-bottom:.6rem; }
+.pc-p{ font-size:.95rem; line-height:1.72; color:#3a3825; }
+.green-card{ background:var(--card); border-radius:6px; padding:1.7rem; border:1px solid var(--border); box-shadow:0 8px 28px var(--shadow); }
+.gc-h{ font-family:'DM Serif Display',serif; font-size:1.22rem; color:var(--text); margin-bottom:.6rem; }
+.gc-p{ font-size:.95rem; line-height:1.72; color:var(--muted); }
+
+/* ───────────────────────────────────────────
+   SPECIES PAGE
+─────────────────────────────────────────── */
+#psp{ background:var(--bg); }
+
+/* Leaflet map */
+.map-wrap{
+  position:relative; border-radius:10px; overflow:hidden;
+  border:1px solid var(--border); box-shadow:var(--shadow);
+}
+#lmap{ height:min(55vh,500px); width:100%; }
+.map-ctrls{ position:absolute; top:.65rem; right:.65rem; z-index:400; display:flex; flex-direction:column; gap:.35rem; }
+.mc-btn{
+  background:var(--surf); border:1px solid var(--border); color:var(--accent);
+  font-family:'Barlow Condensed',sans-serif; font-size:.7rem; letter-spacing:.08em;
+  text-transform:uppercase; padding:.38rem .7rem; border-radius:5px; cursor:pointer; transition:all .2s;
+}
+.mc-btn.on,.mc-btn:hover{ background:var(--accent); color:var(--bg); }
+.map-leg{ position:absolute; bottom:.65rem; left:.65rem; z-index:400; background:rgba(10,24,16,.85); backdrop-filter:blur(6px); border:1px solid var(--border); border-radius:6px; padding:.55rem .8rem; }
+.ml-item{ display:flex; align-items:center; gap:.45rem; font-family:'Barlow Condensed',sans-serif; font-size:.66rem; letter-spacing:.05em; color:var(--muted2); margin-bottom:.22rem; }
+.ml-dot{ width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+
+/* Species DB */
+.filter-row{ display:flex; gap:.45rem; flex-wrap:wrap; margin-bottom:1.35rem; align-items:center; }
+.fpill{
+  padding:.35rem .8rem; border-radius:99px; background:none;
+  border:1px solid var(--border); color:var(--muted);
+  font-family:'Barlow Condensed',sans-serif; font-size:.72rem;
+  letter-spacing:.1em; text-transform:uppercase; cursor:pointer; transition:all .2s;
+}
+.fpill.on,.fpill:hover{ background:var(--accent); color:var(--bg); border-color:var(--accent); }
+.sp-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr)); gap:1.15rem; }
+.sp-card{
+  background:var(--surf2); border:1px solid var(--border); border-radius:8px;
+  padding:1.2rem; display:flex; flex-direction:column; gap:.6rem;
+  opacity:0; transform:translateY(10px); transition:opacity .4s ease,transform .4s ease,box-shadow .2s;
+}
+.sp-card.vis2{ opacity:1; transform:translateY(0); }
+.sp-card:hover{ box-shadow:var(--shadow); }
+.sp-hd{ display:flex; align-items:center; gap:.6rem; }
+.sp-em{ font-size:1.7rem; flex-shrink:0; }
+.sp-nm h4{ font-family:'DM Serif Display',serif; font-size:.98rem; color:var(--text); line-height:1.2; }
+.sp-nm small{ font-family:'Barlow Condensed',sans-serif; font-size:.66rem; letter-spacing:.04em; color:var(--muted2); font-style:italic; }
+.sp-tags{ display:flex; gap:.35rem; flex-wrap:wrap; }
+.sp-tag{ padding:.15rem .5rem; border-radius:3px; font-family:'Barlow Condensed',sans-serif; font-size:.6rem; letter-spacing:.08em; text-transform:uppercase; }
+.sp-tag.plant{ background:rgba(82,183,136,.14); color:var(--accent); border:1px solid rgba(82,183,136,.25); }
+.sp-tag.animal{ background:rgba(180,140,60,.14); color:#c4a040; border:1px solid rgba(180,140,60,.25); }
+.sp-tag.bird{ background:rgba(100,160,220,.14); color:#6ab0e0; border:1px solid rgba(100,160,220,.25); }
+.sp-tag.marine{ background:rgba(60,140,200,.14); color:#4ab0d8; border:1px solid rgba(60,140,200,.25); }
+.sp-tag.low{ background:rgba(82,183,136,.12); color:#52b788; }
+.sp-tag.moderate{ background:rgba(220,180,60,.12); color:#d4b040; }
+.sp-tag.high{ background:rgba(220,120,40,.12); color:#d47830; }
+.sp-tag.critical{ background:rgba(220,60,60,.12); color:#d44040; }
+.sp-desc{ font-size:.87rem; color:var(--muted); line-height:1.6; }
+.sp-fact{ font-size:.8rem; color:var(--muted2); font-style:italic; border-left:2px solid var(--accent); padding-left:.55rem; line-height:1.5; }
+.sp-rgns{ display:flex; gap:.3rem; flex-wrap:wrap; }
+.sp-rgn{ font-family:'Barlow Condensed',sans-serif; font-size:.6rem; letter-spacing:.04em; background:var(--border2); color:var(--muted2); padding:.12rem .42rem; border-radius:3px; }
+
+/* ───────────────────────────────────────────
+   IMPACT PAGE (Magazine + Carbon + Event)
+─────────────────────────────────────────── */
+#pim{ background:var(--bg); }
+
+/* Magazine viewer */
+.mag-wrap{
+  background:linear-gradient(145deg,#12221a,#0c1810);
+  border:1px solid var(--border); border-radius:8px;
+  padding:2.25rem clamp(.75rem,2vw,2.25rem);
+  min-height:460px; display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  box-shadow:inset 0 2px 12px rgba(0,0,0,.4);
+  margin-top:1.5rem;
+}
+.issue-pills{ display:flex; gap:.45rem; flex-wrap:wrap; margin-bottom:.5rem; }
+.ipill{
+  padding:.38rem .85rem; border-radius:99px; background:transparent;
+  border:1px solid var(--border); color:var(--muted);
+  font-family:'Barlow Condensed',sans-serif; font-size:.74rem;
+  letter-spacing:.1em; text-transform:uppercase; cursor:pointer; transition:all .2s;
+}
+.ipill.on,.ipill:hover{ background:var(--accent); color:var(--bg); border-color:var(--accent); }
+.fb-stage{ width:100%; display:flex; flex-direction:column; align-items:center; gap:1.25rem; }
+#fb-vp{ position:relative; overflow:hidden; border-radius:4px; box-shadow:0 16px 50px rgba(0,0,0,.65); max-width:100%; cursor:grab; }
+#fb-vp:active{ cursor:grabbing; }
+#fb-tr{ display:flex; transition:transform .42s cubic-bezier(.4,0,.2,1); will-change:transform; }
+.fb-slide{ flex-shrink:0; background:#fff; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+.fb-slide img{ width:100%; height:100%; object-fit:contain; display:block; }
+.pg-badge{ position:absolute; bottom:.85rem; right:.85rem; background:rgba(0,0,0,.55); color:#fff; font-family:'Barlow Condensed',sans-serif; font-size:.74rem; letter-spacing:.1em; padding:.26rem .72rem; border-radius:99px; backdrop-filter:blur(4px); }
+.fb-ctrls{ display:flex; align-items:center; gap:1.75rem; }
+.fb-btn{
+  width:40px; height:40px; border-radius:50%; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(145deg,#2a5e43,#162c1e);
+  border:1px solid var(--border); color:var(--accent); font-size:1rem;
+  transition:all .2s; box-shadow:0 3px 10px rgba(0,0,0,.3);
+}
+.fb-btn:hover{ background:linear-gradient(145deg,var(--accent),var(--accent3)); color:var(--bg); }
+.fb-btn:disabled{ opacity:.3; pointer-events:none; }
+.pg-ctr{ font-family:'Barlow Condensed',sans-serif; font-size:.84rem; letter-spacing:.12em; color:var(--muted); min-width:88px; text-align:center; }
+.th-strip{ display:flex; gap:.42rem; overflow-x:auto; padding:.4rem 0; max-width:100%; scrollbar-width:thin; scrollbar-color:var(--accent) transparent; }
+.th{ flex-shrink:0; width:50px; height:64px; border-radius:3px; overflow:hidden; cursor:pointer; opacity:.48; border:2px solid transparent; transition:all .2s; }
+.th.on{ opacity:1; border-color:var(--accent); }
+.th img{ width:100%; height:100%; object-fit:cover; }
+.mag-spin{ text-align:center; color:var(--muted2); padding:2rem; }
+.spin{ width:34px; height:34px; margin:0 auto .85rem; border:3px solid var(--border2); border-top-color:var(--accent); border-radius:50%; animation:sp .8s linear infinite; }
+@keyframes sp{ to{transform:rotate(360deg);} }
+.mag-empty h3{ font-family:'DM Serif Display',serif; font-size:1.25rem; color:var(--text); margin:.5rem 0 .35rem; }
+.mag-empty p{ font-size:.9rem; color:var(--muted2); }
+
+/* Carbon calculator */
+.calc-grid{ display:grid; grid-template-columns:1fr 1fr; gap:2rem; align-items:start; margin-top:1.5rem; }
+.calc-p{ background:var(--surf); border:1px solid var(--border); border-radius:10px; padding:1.8rem; }
+.calc-t{ font-family:'Bebas Neue',sans-serif; font-size:1.4rem; letter-spacing:.08em; color:var(--accent); margin-bottom:.3rem; }
+.calc-sub{ font-size:.88rem; color:var(--muted2); margin-bottom:1.35rem; line-height:1.55; }
+.ci-row{ display:grid; grid-template-columns:1fr auto; gap:.45rem; margin-bottom:.65rem; align-items:end; }
+.ci-add{ padding:.6rem .9rem; background:var(--accent); color:var(--bg); border:none; border-radius:4px; font-family:'Barlow Condensed',sans-serif; font-size:.74rem; letter-spacing:.08em; cursor:pointer; transition:background .2s; white-space:nowrap; }
+.ci-add:hover{ background:var(--accent2); }
+.trip-list{ display:flex; flex-direction:column; gap:.35rem; margin:.65rem 0; }
+.trip-item{ display:flex; align-items:center; justify-content:space-between; padding:.38rem .65rem; background:var(--surf2); border-radius:4px; font-family:'Barlow Condensed',sans-serif; font-size:.74rem; color:var(--muted); }
+.trip-rm{ background:none; border:none; color:var(--muted2); cursor:pointer; font-size:.88rem; }
+.calc-res{ background:linear-gradient(145deg,var(--accent),var(--accent2)); border-radius:10px; padding:1.8rem; color:var(--bg); display:none; }
+.cr-row{ display:flex; justify-content:space-between; align-items:center; margin-bottom:.65rem; }
+.cr-key{ font-family:'Barlow Condensed',sans-serif; font-size:.76rem; letter-spacing:.1em; text-transform:uppercase; }
+.cr-v{ font-family:'Bebas Neue',sans-serif; font-size:1.85rem; line-height:1; }
+.cr-trees{ text-align:center; margin-top:.65rem; padding-top:.65rem; border-top:1px solid rgba(0,0,0,.15); }
+.cr-trees .n{ font-family:'Bebas Neue',sans-serif; font-size:3.2rem; line-height:1; display:block; }
+.cr-trees .l{ font-family:'Barlow Condensed',sans-serif; font-size:.76rem; letter-spacing:.12em; text-transform:uppercase; opacity:.75; }
+.calc-ph{ text-align:center; padding:3rem 1rem; color:var(--muted2); }
+.calc-ph .ico{ font-size:2.2rem; margin-bottom:.85rem; }
+.calc-ph p{ font-family:'DM Serif Display',serif; font-size:1rem; font-style:italic; color:var(--muted); }
+.calc-ph small{ font-size:.82rem; margin-top:.4rem; display:block; color:var(--muted2); }
+
+/* Event card */
+.event-card{ background:linear-gradient(145deg,rgba(30,72,50,.88),rgba(15,42,28,.94)); border:1px solid var(--border); border-radius:10px; padding:2.25rem; position:relative; overflow:hidden; margin-top:1.5rem; }
+.event-card::before{ content:'OPERATION MANGROVE'; position:absolute; right:-2rem; top:1.25rem; font-family:'Bebas Neue',sans-serif; font-size:3.5rem; color:rgba(82,183,136,.04); letter-spacing:.1em; pointer-events:none; white-space:nowrap; }
+.ev-ey{ font-family:'Barlow Condensed',sans-serif; font-size:.65rem; letter-spacing:.3em; text-transform:uppercase; color:var(--accent); margin-bottom:.5rem; display:flex; align-items:center; gap:.5rem; }
+.ev-ey::before{ content:''; width:18px; height:1px; background:var(--accent); }
+.ev-title{ font-family:'Bebas Neue',sans-serif; font-size:clamp(1.8rem,4vw,2.8rem); line-height:1; color:var(--text); margin-bottom:.45rem; }
+.ev-sub{ font-family:'DM Serif Display',serif; font-style:italic; color:var(--muted); font-size:.98rem; margin-bottom:1.25rem; }
+.ev-mission{ font-size:.98rem; line-height:1.78; color:var(--muted); max-width:680px; }
+.ev-obj{ display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr)); gap:.85rem; margin-top:1.5rem; }
+.ev-obj-i{ display:flex; align-items:flex-start; gap:.6rem; padding:.85rem .95rem; background:rgba(82,183,136,.05); border:1px solid var(--border2); border-radius:6px; }
+.ev-obj-ico{ font-size:1.1rem; margin-top:.05rem; flex-shrink:0; }
+.ev-obj-tx{ font-family:'Barlow Condensed',sans-serif; font-size:.78rem; letter-spacing:.04em; color:var(--muted); line-height:1.45; }
+.logi-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,155px),1fr)); gap:1.1rem; margin-top:1.5rem; }
+.logi-card{ background:linear-gradient(148deg,#f0e8d0,#e0d6b5); border-radius:7px; padding:1.25rem; box-shadow:0 1px 2px rgba(0,0,0,.1),0 5px 16px rgba(0,0,0,.17),inset 0 1px 0 rgba(255,255,255,.8); }
+.logi-h{ font-family:'Barlow Condensed',sans-serif; font-size:.64rem; letter-spacing:.22em; text-transform:uppercase; color:#2d6a4f; margin-bottom:.38rem; }
+.logi-v{ font-family:'DM Serif Display',serif; font-size:1.06rem; color:#162c1e; line-height:1.25; }
+.logi-s{ font-family:'Crimson Text',serif; font-style:italic; font-size:.84rem; color:rgba(45,106,79,.65); margin-top:.18rem; }
+.roe-block{ margin-top:1.5rem; background:rgba(12,24,18,.85); border:1px solid var(--border); border-radius:8px; padding:1.6rem 1.85rem; }
+[data-theme="light"] .roe-block{ background:rgba(210,240,215,.6); }
+.roe-ttl{ font-family:'Bebas Neue',sans-serif; font-size:1.3rem; letter-spacing:.08em; color:var(--accent); margin-bottom:.9rem; }
+.roe-list{ display:flex; flex-direction:column; gap:.5rem; }
+.roe-i{ display:flex; align-items:flex-start; gap:.75rem; font-size:.93rem; color:var(--muted); line-height:1.55; }
+.roe-dot{ width:5px; height:5px; border-radius:50%; background:var(--accent); margin-top:.6rem; flex-shrink:0; }
+.phase-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr)); gap:.9rem; margin-top:1.5rem; }
+.phase-s{ background:linear-gradient(145deg,rgba(30,72,50,.85),rgba(18,46,30,.9)); border:1px solid var(--border); padding:1.25rem 1.1rem; border-radius:8px; }
+.ph-num{ font-family:'Bebas Neue',sans-serif; font-size:1.7rem; color:rgba(82,183,136,.18); line-height:1; margin-bottom:.28rem; }
+.ph-name{ font-family:'Barlow Condensed',sans-serif; font-size:.76rem; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin-bottom:.32rem; }
+.ph-desc{ font-size:.84rem; color:var(--muted2); line-height:1.5; }
+.reg-cta{ margin-top:1.75rem; display:flex; align-items:center; gap:.9rem; flex-wrap:wrap; }
+.reg-note{ font-family:'Crimson Text',serif; font-style:italic; font-size:.88rem; color:var(--muted2); }
+
+/* ───────────────────────────────────────────
+   CONTACT PAGE
+─────────────────────────────────────────── */
+#pct{ background:var(--surf); }
+.team-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr)); gap:1.25rem; margin-top:2.2rem; }
+.team-card{ background:var(--card); border:1px solid var(--border); border-radius:8px; padding:1.7rem 1.35rem; text-align:center; box-shadow:0 8px 24px var(--shadow); transition:transform .28s,box-shadow .28s; }
+.team-card:hover{ transform:translateY(-5px); box-shadow:0 16px 40px var(--shadow); }
+.t-av{ width:64px; height:64px; border-radius:50%; background:linear-gradient(135deg,var(--accent),var(--accent2)); display:flex; align-items:center; justify-content:center; font-family:'Bebas Neue',sans-serif; font-size:1.75rem; color:var(--bg); margin:0 auto 1rem; box-shadow:0 4px 16px rgba(82,183,136,.28); }
+.t-name{ font-family:'DM Serif Display',serif; font-size:1.08rem; color:var(--text); }
+.t-div{ width:26px; height:1px; background:var(--border); margin:.6rem auto; }
+.t-role{ font-family:'Barlow Condensed',sans-serif; font-size:.7rem; letter-spacing:.16em; text-transform:uppercase; color:var(--accent); line-height:1.6; }
+.contact-grid{ display:grid; grid-template-columns:1fr 1fr; gap:2rem; margin-top:2.2rem; align-items:start; }
+.contact-info{ display:flex; flex-direction:column; gap:1.1rem; }
+.ci-item{ display:flex; align-items:center; gap:.75rem; padding:1rem 1.1rem; background:var(--surf2); border:1px solid var(--border); border-radius:7px; text-decoration:none; transition:background .2s; }
+.ci-item:hover{ background:var(--surf3); }
+.ci-ico{ font-size:1.25rem; flex-shrink:0; }
+.ci-info .ci-lbl{ font-family:'Barlow Condensed',sans-serif; font-size:.65rem; letter-spacing:.18em; text-transform:uppercase; color:var(--muted2); margin-bottom:.18rem; }
+.ci-info .ci-val{ font-family:'Barlow Condensed',sans-serif; font-size:.82rem; letter-spacing:.05em; color:var(--accent); }
+.ci-item.ig .ci-val{ color:#c47ee0; }
+.contact-form-wrap{ background:var(--surf2); border:1px solid var(--border); border-radius:10px; padding:1.85rem; }
+.cf-title{ font-family:'Bebas Neue',sans-serif; font-size:1.4rem; letter-spacing:.08em; color:var(--accent); margin-bottom:.25rem; }
+.cf-sub{ font-size:.88rem; color:var(--muted2); margin-bottom:1.3rem; line-height:1.55; }
+.cf-ok{ display:none; text-align:center; padding:1.25rem; background:rgba(82,183,136,.08); border:1px solid var(--border); border-radius:6px; color:var(--accent); font-family:'DM Serif Display',serif; font-size:1rem; font-style:italic; }
+
+/* ───────────────────────────────────────────
+   ADMIN OVERLAYS
+─────────────────────────────────────────── */
+.ov{ position:fixed; inset:0; z-index:2000; background:rgba(6,14,9,.93); backdrop-filter:blur(8px); display:none; align-items:center; justify-content:center; padding:1rem; }
+.ov.on{ display:flex; }
+.pw-box{ background:var(--surf); border:1px solid var(--border); border-radius:10px; padding:2.2rem 1.8rem; width:min(92vw,360px); text-align:center; box-shadow:var(--shadow); }
+.pw-ico{ font-size:2rem; margin-bottom:.8rem; }
+.pw-t{ font-family:'Bebas Neue',sans-serif; font-size:1.55rem; letter-spacing:.1em; color:var(--accent); margin-bottom:.3rem; }
+.pw-s{ font-size:.86rem; color:var(--muted2); margin-bottom:1.5rem; }
+.pw-err{ color:#e87050; font-size:.82rem; margin-top:.6rem; display:none; }
+.pw-acts{ display:flex; gap:.6rem; margin-top:.85rem; }
+.adm-box{ background:var(--surf); border:1px solid var(--border); border-radius:10px; width:min(96vw,700px); max-height:92vh; overflow-y:auto; padding:1.8rem 1.9rem; position:relative; box-shadow:var(--shadow); }
+.adm-box::-webkit-scrollbar{ width:5px; }
+.adm-box::-webkit-scrollbar-thumb{ background:var(--border); border-radius:3px; }
+.adm-x{ position:absolute; top:.8rem; right:.8rem; background:none; border:none; color:var(--muted2); font-size:1.1rem; cursor:pointer; padding:.25rem; transition:color .2s; }
+.adm-x:hover{ color:var(--accent); }
+.adm-t{ font-family:'Bebas Neue',sans-serif; font-size:1.75rem; color:var(--accent); letter-spacing:.1em; margin-bottom:.15rem; }
+.adm-s{ font-size:.82rem; color:var(--muted2); margin-bottom:1.4rem; }
+.adm-tabs{ display:flex; border-bottom:1px solid var(--border); margin-bottom:1.4rem; }
+.atab{ padding:.58rem 1.1rem; background:none; border:none; color:var(--muted2); font-family:'Barlow Condensed',sans-serif; font-size:.78rem; letter-spacing:.12em; text-transform:uppercase; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; transition:all .2s; }
+.atab.on{ color:var(--accent); border-bottom-color:var(--accent); }
+.apane{ display:none; }
+.apane.on{ display:block; }
+#new-iss-f{ padding:.85rem; border:1px solid var(--border); border-radius:4px; margin-bottom:1rem; }
+.dz{ border:2px dashed var(--border); border-radius:6px; padding:1.6rem 1.25rem; text-align:center; cursor:pointer; transition:all .2s; }
+.dz:hover,.dz.ov2{ border-color:var(--accent); background:rgba(82,183,136,.03); }
+.dz p{ color:var(--muted2); font-size:.9rem; }
+.dz .sub2{ font-size:.76rem; margin-top:.32rem; }
+.dz input[type="file"]{ display:none; }
+.prev-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(80px,1fr)); gap:.45rem; margin-top:.85rem; }
+.pi{ position:relative; aspect-ratio:.71; border-radius:3px; overflow:hidden; }
+.pi img{ width:100%; height:100%; object-fit:cover; }
+.pi .pgn{ position:absolute; bottom:2px; left:0; right:0; text-align:center; font-family:'Barlow Condensed',sans-serif; font-size:.58rem; color:#fff; background:rgba(0,0,0,.55); }
+.pi .rm{ position:absolute; top:2px; right:2px; width:16px; height:16px; border-radius:50%; background:rgba(220,60,40,.85); border:none; color:#fff; font-size:.55rem; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.prog-b{ height:4px; background:var(--border2); border-radius:3px; margin-top:.85rem; overflow:hidden; display:none; }
+.prog-f{ height:100%; background:var(--accent); border-radius:3px; width:0%; transition:width .3s; }
+.iss-list{ display:flex; flex-direction:column; gap:.6rem; }
+.iss-row{ display:flex; align-items:center; justify-content:space-between; padding:.85rem 1rem; background:var(--inp); border:1px solid var(--border); border-radius:4px; gap:.85rem; }
+.ir-info h4{ font-family:'DM Serif Display',serif; color:var(--text); font-size:.98rem; }
+.ir-info small{ color:var(--muted2); font-size:.76rem; }
+.del-btn{ background:none; border:1px solid rgba(220,80,60,.4); color:#e87060; padding:.3rem .72rem; border-radius:3px; cursor:pointer; font-family:'Barlow Condensed',sans-serif; font-size:.72rem; letter-spacing:.1em; white-space:nowrap; flex-shrink:0; transition:all .2s; }
+.del-btn:hover{ background:rgba(220,80,60,.1); }
+
+/* Toast */
+.toast{ position:fixed; bottom:1.4rem; right:1.4rem; z-index:5000; padding:.78rem 1.3rem; border-radius:5px; font-family:'Barlow Condensed',sans-serif; font-size:.86rem; letter-spacing:.05em; transform:translateY(70px); opacity:0; transition:all .3s; pointer-events:none; max-width:300px; }
+.toast.on{ transform:translateY(0); opacity:1; }
+.toast.ok{ background:var(--accent); color:var(--bg); }
+.toast.err{ background:#d64430; color:#fff; }
+
+/* ───────────────────────────────────────────
+   RESPONSIVE
+─────────────────────────────────────────── */
+@media(max-width:860px){
+  .nav-desktop{ display:none; }
+  .ham{ display:flex; }
+  .set-panel{ position:fixed; bottom:0; left:0; right:0; top:auto; width:100%; border-radius:16px 16px 0 0; max-height:80vh; overflow-y:auto; }
+  .about-grid{ grid-template-columns:1fr; }
+  .about-img-wrap{ aspect-ratio:16/9; }
+  .fb-grid{ grid-template-columns:1fr; }
+  .calc-grid{ grid-template-columns:1fr; }
+  .contact-grid{ grid-template-columns:1fr; }
+  .comp-row{ grid-template-columns:85px 1fr 60px; }
+  .ww{ display:none; }
+}
+@media(max-width:540px){
+  .hero-scroll{ display:none; }
+  .team-grid{ grid-template-columns:1fr 1fr; }
+  .phase-grid{ grid-template-columns:1fr 1fr; }
+  .ev-obj{ grid-template-columns:1fr; }
+  .logi-grid{ grid-template-columns:1fr 1fr; }
+  .chart-band{ grid-template-columns:1fr; }
+  .cards-grid{ grid-template-columns:1fr; }
+  .sp-grid{ grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── CURSOR ── -->
+<div id="cur"></div>
+
+<!-- ── LOADER ── -->
+<div id="ls">
+  <div class="ls-logo">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M17 8C8 10 5.9 16.2 3.2 21.4L4.6 22l.4-1C6 19 8 17 12 16c0 0 .4 2.5-.4 4.8L13 21c.6-1.6.9-3.3.8-5 2.5-1 4.2-2.8 5.2-4.8l.8-.2-2.8-3zm-5 8c-1.3 0-2.4.2-3.4.5C9 14.2 10 12 12 10.5c1.5-1 3-1.3 4.5-1C16 12.2 14.5 15 12 16z"/></svg>
+    MangroveWatch
+  </div>
+  <div class="ls-leaves"><div class="ls-leaf"></div><div class="ls-leaf"></div><div class="ls-leaf"></div><div class="ls-leaf"></div><div class="ls-leaf"></div></div>
+  <div class="ls-bar"><div class="ls-fill"></div></div>
+  <div class="ls-msg">Loading awareness project…</div>
+</div>
+
+<!-- ── TUTORIAL ── -->
+<div id="tut">
+  <div class="tut-box">
+    <div class="tut-bar" id="tBar" style="width:20%"></div>
+    <div class="tut-body">
+      <div class="tut-step" id="tStep">Step 1 of 5</div>
+      <div class="tut-icon" id="tIcon">🌿</div>
+      <div class="tut-title" id="tTitle">Welcome to MangroveWatch</div>
+      <div class="tut-desc" id="tDesc">An awareness project about the destruction of mangroves for urban infrastructure. Created by Reuben in 2026.</div>
+      <div class="tut-vis" id="tVis" style="display:none;"></div>
+    </div>
+    <div class="tut-foot">
+      <div class="tut-dots" id="tDots"></div>
+      <div class="tut-acts">
+        <button class="tut-skip" id="tSkip" onclick="closeTut()">Skip</button>
+        <button class="btn-p" id="tNext" onclick="tutNext()">Next →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── NAV ── -->
+<nav id="nav">
+  <button class="nav-logo" onclick="go('home')">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 8C8 10 5.9 16.2 3.2 21.4L4.6 22l.4-1C6 19 8 17 12 16c0 0 .4 2.5-.4 4.8L13 21c.6-1.6.9-3.3.8-5 2.5-1 4.2-2.8 5.2-4.8l.8-.2-2.8-3zm-5 8c-1.3 0-2.4.2-3.4.5C9 14.2 10 12 12 10.5c1.5-1 3-1.3 4.5-1C16 12.2 14.5 15 12 16z"/></svg>
+    MangroveWatch
+  </button>
+  <ul class="nav-desktop" id="nDesktop">
+    <li><button class="nav-btn act" data-p="home"         onclick="go('home')">Home</button></li>
+    <li><button class="nav-btn"     data-p="conservation" onclick="go('conservation')">Conservation</button></li>
+    <li><button class="nav-btn"     data-p="species"      onclick="go('species')">Species</button></li>
+    <li><button class="nav-btn"     data-p="impact"       onclick="go('impact')">Impact</button></li>
+    <li><button class="nav-btn"     data-p="contact"      onclick="go('contact')">Contact</button></li>
+  </ul>
+  <div class="nav-right">
+    <div class="set-wrap">
+      <button class="set-btn" id="sBtn" onclick="toggleSettings()">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.63-.07.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+        <span>Settings</span>
+      </button>
+      <div class="set-panel" id="sPanel">
+        <div>
+          <div class="s-head">Appearance</div>
+          <div class="theme-grid">
+            <button class="theme-btn on" onclick="setTheme('dark')">Dark</button>
+            <button class="theme-btn" onclick="setTheme('light')">Light</button>
+            <button class="theme-btn" onclick="setTheme('hc-dark')">HC Dark</button>
+            <button class="theme-btn" onclick="setTheme('hc-light')">HC Light</button>
+          </div>
+        </div>
+        <div>
+          <div class="s-head">Font Size</div>
+          <select class="s-sel" style="width:100%;" onchange="setFZ(this.value)">
+            <option value="sm">Small</option>
+            <option value="md" selected>Medium</option>
+            <option value="lg">Large</option>
+            <option value="xl">Extra Large</option>
+          </select>
+        </div>
+        <div>
+          <div class="s-head">Language</div>
+          <select class="s-sel" style="width:100%;" onchange="setLang(this.value)">
+            <option value="en">English</option>
+            <option value="ar">العربية</option>
+          </select>
+        </div>
+        <div>
+          <div class="s-head">Region</div>
+          <div class="s-row" style="margin-bottom:.5rem;">
+            <span class="s-lbl">Timezone</span>
+            <select class="s-sel" id="tzSel">
+              <option value="Asia/Muscat">Muscat (GST)</option>
+              <option value="Asia/Kolkata">India (IST)</option>
+              <option value="UTC">UTC</option>
+              <option value="Europe/London">London (GMT)</option>
+              <option value="America/New_York">New York (EST)</option>
+            </select>
+          </div>
+          <div class="s-row">
+            <span class="s-lbl">Currency</span>
+            <select class="s-sel" id="currSel" onchange="setCurr(this.value)">
+              <option value="OMR">OMR</option>
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+              <option value="GBP">GBP</option>
+              <option value="INR">INR</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <div class="s-head">Ambient Audio</div>
+          <div class="s-row">
+            <span class="s-lbl">Mangrove Soundscape</span>
+            <button class="tog" id="ambTog" onclick="toggleAudio()"></button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="ham" id="ham" onclick="toggleMob()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<!-- ── MOBILE NAV ── -->
+<div id="mob-nav">
+  <div class="mob-links">
+    <button class="mob-link act" data-p="home"         onclick="go('home');toggleMob()">🏠 Home</button>
+    <button class="mob-link"     data-p="conservation" onclick="go('conservation');toggleMob()">🌊 Conservation</button>
+    <button class="mob-link"     data-p="species"      onclick="go('species');toggleMob()">🐠 Species</button>
+    <button class="mob-link"     data-p="impact"       onclick="go('impact');toggleMob()">📖 Impact</button>
+    <button class="mob-link"     data-p="contact"      onclick="go('contact');toggleMob()">👥 Contact</button>
+  </div>
+  <div class="mob-settings">
+    <div class="mob-set-title">Settings</div>
+    <div class="fg">
+      <label class="fl">Theme</label>
+      <select class="fs" onchange="setTheme(this.value)">
+        <option value="dark">Dark</option>
+        <option value="light">Light</option>
+        <option value="hc-dark">HC Dark</option>
+        <option value="hc-light">HC Light</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label class="fl">Font Size</label>
+      <select class="fs" onchange="setFZ(this.value)">
+        <option value="sm">Small</option><option value="md" selected>Medium</option><option value="lg">Large</option><option value="xl">Extra Large</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label class="fl">Language</label>
+      <select class="fs" onchange="setLang(this.value)"><option value="en">English</option><option value="ar">العربية</option></select>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.5rem;">
+      <span class="s-lbl">Ambient Audio</span>
+      <button class="tog" id="ambTogMob" onclick="toggleAudio()"></button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     HOME PAGE
+══════════════════════════════════════════ -->
+<div class="page on" id="ph">
+
+  <!-- HERO: photo background only, zero SVG art -->
+  <section id="hero">
+    <div class="hero-photo"></div>
+
+    <div class="hero-tag">Awareness Project — MangroveWatch 2026</div>
+    <h1 class="hero-h" id="heroH">
+      <span class="hero-line">MANGROVES</span>
+      <span class="hero-line"><span class="hl-acc">UNDER</span></span>
+      <span class="hero-line"><span class="hl-thr">THREAT</span></span>
+    </h1>
+    <p class="hero-sub">When cities expand, mangroves disappear. Join us in confronting the silent devastation of coastal ecosystems sacrificed for urban infrastructure.</p>
+    <div class="hero-cta">
+      <button class="btn-p" onclick="go('impact')">📖 Read Our Magazine</button>
+      <button class="btn-o" onclick="go('impact')">🌿 Join the Event</button>
+    </div>
+    <div class="hero-scroll" aria-hidden="true">
+      <span>Scroll</span>
+      <svg width="13" height="17" viewBox="0 0 13 17" fill="currentColor"><path d="M5.5 0v11.7L3.2 9.4 2 10.6 6.5 15l4.5-4.4-1.2-1.2-2.3 2.3V0h-2z"/></svg>
+    </div>
+
+    <!-- Weather widget -->
+    <div class="ww" id="ww">
+      <div class="ww-loc">📍 Al Qurum, Muscat</div>
+      <div class="ww-row">
+        <div class="ww-ico" id="wwIco">⏳</div>
+        <div class="ww-tmp" id="wwTmp">--°</div>
+      </div>
+      <div class="ww-info" id="wwInfo">Loading…</div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:.6rem;letter-spacing:.1em;color:var(--muted2);margin-top:.35rem;">Tide level</div>
+      <div class="tide-tr"><div class="tide-fl" id="tideF" style="width:50%"></div></div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:.6rem;color:var(--muted2);text-align:right;margin-top:.2rem;" id="tideLbl">~0.8m</div>
+    </div>
+  </section>
+
+  <!-- Quick page nav -->
+  <div class="qnav">
+    <div class="qcard reveal" onclick="go('conservation')"><div class="qcard-ico">📉</div><div class="qcard-title">Conservation</div><div class="qcard-desc">Crisis statistics, animated charts, and ecosystem comparisons.</div></div>
+    <div class="qcard reveal reveal-d1" onclick="go('species')"><div class="qcard-ico">🗺️</div><div class="qcard-title">Species</div><div class="qcard-desc">Interactive map of hotspots and a filterable species database.</div></div>
+    <div class="qcard reveal reveal-d2" onclick="go('impact')"><div class="qcard-ico">📖</div><div class="qcard-title">Impact</div><div class="qcard-desc">Weekly e-magazine, carbon calculator, and the scavenger hunt event.</div></div>
+    <div class="qcard reveal reveal-d3" onclick="go('contact')"><div class="qcard-ico">👥</div><div class="qcard-title">Contact</div><div class="qcard-desc">Meet the team and get in touch with MangroveWatch.</div></div>
+  </div>
+
+  <!-- ABOUT US -->
+  <div class="wrap" id="about-section" style="background:var(--bg);">
+    <div class="chip reveal">About the Project</div>
+    <h2 class="sect-title reveal">ABOUT<br><span style="color:var(--accent)">MANGROVEWATCH</span></h2>
+    <div class="about-grid" style="margin-top:2.5rem;">
+      <div class="about-body reveal slide-left">
+        <p class="sect-sub" style="margin-top:0;">MangroveWatch is a student-led awareness initiative dedicated to exposing the accelerating destruction of mangrove forests across urban coastlines. From the Gulf to South Asia, these irreplaceable ecosystems are being cleared for roads, ports, and real estate — silently, rapidly, and with devastating consequences.</p>
+        <p style="margin-top:1rem;font-size:1rem;line-height:1.78;color:var(--muted);">Through our weekly magazine, interactive data, field events, and community outreach, we aim to make the mangrove crisis impossible to ignore. Every mangrove lost is a coastline more vulnerable, a fishery collapsed, a community left unprotected.</p>
+        <div class="stat-row">
+          <div class="stat-item reveal reveal-d1">
+            <span class="stat-num">35%</span>
+            <span class="stat-lbl">Global cover lost since 1980</span>
+          </div>
+          <div class="stat-item reveal reveal-d2">
+            <span class="stat-num">5×</span>
+            <span class="stat-lbl">More carbon than rainforest</span>
+          </div>
+          <div class="stat-item reveal reveal-d3">
+            <span class="stat-num">3.4M</span>
+            <span class="stat-lbl">Hectares remaining globally</span>
+          </div>
+        </div>
+      </div>
+      <div class="about-img-wrap reveal slide-right">
+        <img src="https://www.rgs.org/media/l45fj05l/mangroves-with-glassy-water-and-blue-sky.jpg" alt="Mangrove forest with glassy water" loading="lazy">
+        <div class="about-img-overlay"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FEEDBACK + QUERY (below About Us) -->
+  <section id="feedback-section" style="background:var(--surf);">
+    <div class="wrap-sm">
+      <div class="chip reveal">Community</div>
+      <h2 class="sect-title reveal">FEEDBACK &amp;<br><span style="color:var(--accent)">QUERIES</span></h2>
+      <p class="sect-sub reveal">Share your thoughts on our project, or send us a direct question — we read every message.</p>
+      <div class="fb-grid">
+        <!-- Feedback form -->
+        <div class="fb-panel reveal slide-left">
+          <div class="fb-title">Leave Feedback</div>
+          <div class="fb-sub">Rate the project and share what you thought.</div>
+          <div class="fb-ok" id="fbOk">🌿 Thank you! Your feedback means a lot to us.</div>
+          <form id="fbForm" onsubmit="submitFb(event)">
+            <div class="fg">
+              <label class="fl">Your Rating</label>
+              <div class="star-row" id="starRow">
+                <span class="star" data-v="1" onclick="setStar(1)">★</span>
+                <span class="star" data-v="2" onclick="setStar(2)">★</span>
+                <span class="star" data-v="3" onclick="setStar(3)">★</span>
+                <span class="star" data-v="4" onclick="setStar(4)">★</span>
+                <span class="star" data-v="5" onclick="setStar(5)">★</span>
+              </div>
+            </div>
+            <div class="fg"><label class="fl">Name (optional)</label><input type="text" class="fi" id="fbName" placeholder="Your name"></div>
+            <div class="fg"><label class="fl">Email (optional)</label><input type="email" class="fi" id="fbEmail" placeholder="your@email.com"></div>
+            <div class="fg"><label class="fl">Message *</label><textarea class="ft" id="fbMsg" rows="4" placeholder="Share your thoughts, suggestions, or comments…" required></textarea></div>
+            <button type="submit" class="btn-p" style="width:100%;justify-content:center;">💬 Submit Feedback</button>
+          </form>
+        </div>
+        <!-- Query form -->
+        <div class="fb-panel reveal slide-right">
+          <div class="fb-title">Send a Query</div>
+          <div class="fb-sub">Have a question about the project, event, or conservation work?</div>
+          <div class="fb-ok" id="qOk">🌿 Query received! We'll get back to you soon.</div>
+          <form id="qForm" onsubmit="submitQ(event)">
+            <div class="fg"><label class="fl">Name *</label><input type="text" class="fi" id="qName" placeholder="Your full name" required></div>
+            <div class="fg"><label class="fl">Email *</label><input type="email" class="fi" id="qEmail" placeholder="your@email.com" required></div>
+            <div class="fg"><label class="fl">Subject</label>
+              <select class="fs" id="qSubject">
+                <option>General Enquiry</option>
+                <option>The Event — Scavenger Hunt</option>
+                <option>Magazine &amp; Publications</option>
+                <option>Collaboration / Partnership</option>
+                <option>Press / Media</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div class="fg"><label class="fl">Message *</label><textarea class="ft" id="qMsg" rows="4" placeholder="Describe your question or enquiry…" required></textarea></div>
+            <button type="submit" class="btn-p" style="width:100%;justify-content:center;">📨 Send Query</button>
+          </form>
+          <div style="margin-top:1.35rem;padding:.9rem 1rem;background:var(--inp);border:1px solid var(--border2);border-radius:6px;">
+            <p style="font-family:'Barlow Condensed',sans-serif;font-size:.68rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted2);margin-bottom:.45rem;">Or reach us directly</p>
+            <a href="mailto:reubenjohn2711@gmail.com" style="display:flex;align-items:center;gap:.45rem;font-family:'Barlow Condensed',sans-serif;font-size:.78rem;color:var(--accent);text-decoration:none;margin-bottom:.3rem;">✉️ reubenjohn2711@gmail.com</a>
+            <a href="tel:+96896270711" style="display:flex;align-items:center;gap:.45rem;font-family:'Barlow Condensed',sans-serif;font-size:.78rem;color:var(--accent);text-decoration:none;">📞 +968 9627 0711</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="ft-bar"><div><div class="ft-brand">🌿 MangroveWatch</div><div class="ft-copy">© 2026 MangroveWatch Awareness Project</div></div><div class="ft-credit" id="ftCredit">Website by Reuben John</div></div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     CONSERVATION PAGE
+══════════════════════════════════════════ -->
+<div class="page" id="pconservation">
+  <div class="wrap">
+    <div class="chip reveal">Conservation Crisis</div>
+    <h2 class="sect-title reveal">WHY MANGROVES<br><span style="color:var(--accent)">MATTER</span></h2>
+    <p class="sect-sub reveal">Mangrove forests are among the most biodiverse and carbon-dense ecosystems on Earth — yet they are being bulldozed at an alarming rate to make way for roads, ports, housing, and urban sprawl.</p>
+
+    <!-- Animated Charts -->
+    <div class="chart-band" id="chartBand">
+      <div class="cc reveal">
+        <div class="cc-label">Global Cover Lost Since 1980</div>
+        <div class="donut-w">
+          <svg width="105" height="105" viewBox="0 0 105 105">
+            <defs><linearGradient id="dg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#52b788"/><stop offset="100%" stop-color="#95d5b2"/></linearGradient></defs>
+            <circle class="d-bg" cx="52.5" cy="52.5" r="42"/>
+            <circle class="d-fill" id="df1" cx="52.5" cy="52.5" r="42" stroke="url(#dg)"/>
+          </svg>
+          <div class="d-lbl" id="dl1">0%</div>
+        </div>
+        <div class="cc-val">35%</div>
+        <div class="cc-desc">Over a third of global mangrove forests permanently destroyed — faster than inland tropical deforestation.</div>
+      </div>
+      <div class="cc reveal reveal-d1">
+        <div class="cc-label">Carbon Storage vs. Other Ecosystems (t/ha)</div>
+        <div class="bar-ch" style="width:100%">
+          <div class="bc-row"><span class="bc-lbl">Mangrove</span><div class="bc-tr"><div class="bc-fl c1" id="b1" data-w="100"></div></div><span class="bc-num">1,000t</span></div>
+          <div class="bc-row"><span class="bc-lbl">Rainforest</span><div class="bc-tr"><div class="bc-fl c2" id="b2" data-w="55"></div></div><span class="bc-num">~200t</span></div>
+          <div class="bc-row"><span class="bc-lbl">Savanna</span><div class="bc-tr"><div class="bc-fl c3" id="b3" data-w="28"></div></div><span class="bc-num">~80t</span></div>
+        </div>
+        <div class="cc-val">5×</div>
+        <div class="cc-desc">Mangroves store five times more carbon per hectare than upland tropical forests.</div>
+      </div>
+      <div class="cc reveal reveal-d2" style="position:relative;">
+        <div class="cc-label">Global Cover 1980–2024 (Million Ha)</div>
+        <div class="sp-w" id="spWrap" style="width:100%;">
+          <svg id="spSvg" width="100%" height="95" viewBox="0 0 270 95" preserveAspectRatio="none" style="overflow:visible;">
+            <defs>
+              <linearGradient id="spGr" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#52b788" stop-opacity=".45"/>
+                <stop offset="100%" stop-color="#52b788" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <path d="M0,10 C40,14 80,26 120,43 C160,60 200,73 240,81 C255,84 263,86 270,87 L270,95 L0,95Z" fill="url(#spGr)" opacity=".3"/>
+            <path id="spPath" class="sp-path" d="M0,10 C40,14 80,26 120,43 C160,60 200,73 240,81 C255,84 263,86 270,87"/>
+            <circle id="sp0" cx="0"   cy="10" r="4" fill="#52b788" style="cursor:pointer;" data-i="0"/>
+            <circle id="sp1" cx="54"  cy="20" r="4" fill="#52b788" style="cursor:pointer;" data-i="1"/>
+            <circle id="sp2" cx="108" cy="36" r="4" fill="#52b788" style="cursor:pointer;" data-i="2"/>
+            <circle id="sp3" cx="162" cy="55" r="4" fill="#52b788" style="cursor:pointer;" data-i="3"/>
+            <circle id="sp4" cx="216" cy="74" r="4" fill="#52b788" style="cursor:pointer;" data-i="4"/>
+            <circle id="sp5" cx="270" cy="87" r="4" fill="#52b788" style="cursor:pointer;" data-i="5"/>
+            <text x="3"   y="9"  font-family="'Barlow Condensed'" font-size="8.5" fill="rgba(149,213,178,.4)">1980</text>
+            <text x="236" y="86" font-family="'Barlow Condensed'" font-size="8.5" fill="rgba(149,213,178,.4)">2024</text>
+          </svg>
+          <div class="sp-tip" id="spTip"></div>
+        </div>
+        <div class="cc-val">3.4M ha</div>
+        <div class="cc-desc">From ~7M ha in 1980. Hover data points to see key milestones.</div>
+      </div>
+    </div>
+
+    <!-- Interactive metric comparison -->
+    <div class="comp-wrap reveal">
+      <div class="chip" style="margin-top:2rem;">Interactive Comparison</div>
+      <h3 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(1.8rem,4vw,3rem);line-height:.95;margin-bottom:.65rem;">ECOSYSTEM METRICS</h3>
+      <p style="font-size:.9rem;color:var(--muted);margin-bottom:1.25rem;">Select a metric to compare mangroves against other major ecosystems</p>
+      <div class="metric-pills">
+        <button class="mpill on" onclick="setMetric('carbon',this)">Carbon Storage</button>
+        <button class="mpill" onclick="setMetric('biodiversity',this)">Biodiversity</button>
+        <button class="mpill" onclick="setMetric('economic',this)">Economic Value</button>
+        <button class="mpill" onclick="setMetric('coastal',this)">Coastal Protection</button>
+      </div>
+      <div class="comp-chart">
+        <div class="comp-label" id="mLabel">Carbon Storage — Tonnes of CO₂ per Hectare</div>
+        <div class="comp-rows">
+          <div class="comp-row"><span class="cr-lbl">Mangrove</span><div class="cr-tr"><div class="cr-fl e1" id="c1">1,000 t</div></div><span class="cr-unit" id="u1">t/ha</span></div>
+          <div class="comp-row"><span class="cr-lbl">Rainforest</span><div class="cr-tr"><div class="cr-fl e2" id="c2">~200 t</div></div><span class="cr-unit" id="u2">t/ha</span></div>
+          <div class="comp-row"><span class="cr-lbl">Savanna</span><div class="cr-tr"><div class="cr-fl e3" id="c3">~80 t</div></div><span class="cr-unit" id="u3">t/ha</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Info cards -->
+    <div style="margin-top:2.5rem;">
+      <div class="chip reveal">Key Facts</div>
+      <div class="cards-grid">
+        <div class="paper-card reveal"><div class="pc-ico">🌊</div><h3 class="pc-h">Natural Coastal Shield</h3><p class="pc-p">Mangrove root systems reduce wave energy by up to 70%, protecting coastlines from storm surges, tsunamis, and erosion. Removing them directly exposes millions of people to flooding risk.</p></div>
+        <div class="paper-card reveal reveal-d1"><div class="pc-ico">🐠</div><h3 class="pc-h">Marine Nursery</h3><p class="pc-p">Over 80% of commercial fish species depend on mangrove habitats at some life-cycle stage. Their destruction collapses fisheries that coastal communities rely on for food and income.</p></div>
+        <div class="green-card reveal reveal-d2"><h3 class="gc-h">The Urban Threat</h3><p class="gc-p">Roads, bridges, ports, and real-estate developments routinely encroach on mangrove zones. "Land reclamation" projects permanently erase ecosystems that took centuries to form.</p></div>
+        <div class="green-card reveal reveal-d3"><h3 class="gc-h">A Humanitarian Issue</h3><p class="gc-p">Coastal flooding worsens. Fish populations collapse. Carbon stored for millennia is released. Communities dependent on fishing and coastal protection lose their livelihoods and safety.</p></div>
+      </div>
+    </div>
+  </div>
+  <div class="ft-bar"><div><div class="ft-brand">🌿 MangroveWatch</div><div class="ft-copy">© 2026</div></div><div class="ft-credit">Website by Reuben John</div></div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SPECIES PAGE
+══════════════════════════════════════════ -->
+<div class="page" id="pspecies">
+  <div class="wrap" style="padding-bottom:1.5rem;">
+    <div class="chip reveal">Explore</div>
+    <h2 class="sect-title reveal">MANGROVE<br><span style="color:var(--accent)">HOTSPOTS</span></h2>
+    <p class="sect-sub reveal">Interactive map of key mangrove conservation zones. Click markers for details — toggle satellite view for visual comparison.</p>
+    <div class="map-wrap reveal" style="margin-top:1.75rem;">
+      <div id="lmap"></div>
+      <div class="map-ctrls">
+        <button class="mc-btn on" id="mcStr" onclick="setLayer('street')">🗺 Map</button>
+        <button class="mc-btn" id="mcSat" onclick="setLayer('sat')">🛰 Satellite</button>
+      </div>
+      <div class="map-leg">
+        <div class="ml-item"><div class="ml-dot" style="background:#e53935;"></div>Critical</div>
+        <div class="ml-item"><div class="ml-dot" style="background:#fb8c00;"></div>High</div>
+        <div class="ml-item"><div class="ml-dot" style="background:#fdd835;"></div>Moderate</div>
+        <div class="ml-item"><div class="ml-dot" style="background:#43a047;"></div>Low</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap-sm" style="background:var(--surf);padding-top:2.5rem;padding-bottom:2.5rem;">
+    <div class="chip reveal">Species Database</div>
+    <h2 class="sect-title reveal" style="font-size:clamp(2rem,5vw,3.5rem);">LOCAL FLORA<br>&amp; FAUNA</h2>
+    <p style="color:var(--muted);margin:.65rem 0 1.35rem;font-size:.95rem;" class="reveal">Mangrove ecosystems of Oman and India — filter by type to explore species.</p>
+    <div class="filter-row reveal">
+      <button class="fpill on" onclick="filterSp('all',this)">All</button>
+      <button class="fpill" onclick="filterSp('plant',this)">🌿 Plants</button>
+      <button class="fpill" onclick="filterSp('animal',this)">🦀 Animals</button>
+      <button class="fpill" onclick="filterSp('bird',this)">🐦 Birds</button>
+      <button class="fpill" onclick="filterSp('marine',this)">🐠 Marine</button>
+    </div>
+    <div class="sp-grid" id="spGrid"><div class="mag-spin"><div class="spin"></div><p style="font-family:'Barlow Condensed',sans-serif;font-size:.78rem;letter-spacing:.15em;text-transform:uppercase;">Loading species…</p></div></div>
+  </div>
+  <div class="ft-bar"><div><div class="ft-brand">🌿 MangroveWatch</div><div class="ft-copy">© 2026</div></div><div class="ft-credit">Website by Reuben John</div></div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     IMPACT PAGE
+══════════════════════════════════════════ -->
+<div class="page" id="pimpact">
+  <!-- Magazine -->
+  <div class="wrap" id="magazine-section">
+    <div class="chip reveal">E-Magazine</div>
+    <h2 class="sect-title reveal">MANGROVE<br><span style="color:var(--accent)">CHRONICLES</span></h2>
+    <p style="color:var(--muted);margin-top:.55rem;font-family:'Barlow Condensed',sans-serif;font-size:.76rem;letter-spacing:.12em;text-transform:uppercase;" class="reveal">Weekly publication — MangroveWatch 2026</p>
+    <div class="issue-pills reveal" id="issuePills"></div>
+    <div class="mag-wrap">
+      <div id="magSpin" class="mag-spin"><div class="spin"></div><p style="font-family:'Barlow Condensed',sans-serif;font-size:.76rem;letter-spacing:.15em;text-transform:uppercase;">Loading…</p></div>
+      <div id="magEmpty" class="mag-empty" style="display:none;text-align:center;padding:2.5rem 1rem;"><p style="font-size:2rem;margin-bottom:.6rem;">🌿</p><h3>First Issue Coming Soon</h3><p>Our weekly publication launches shortly — check back soon!</p></div>
+      <div class="fb-stage" id="magStage" style="display:none;">
+        <div id="fb-vp"><div id="fb-tr"></div><div class="pg-badge" id="pgB">1 / 1</div></div>
+        <div class="th-strip" id="thStrip"></div>
+        <div class="fb-ctrls"><button class="fb-btn" id="prevP">&#8592;</button><span class="pg-ctr" id="pgCtr">Page 1 of 1</span><button class="fb-btn" id="nextP">&#8594;</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Carbon calculator -->
+  <div class="wrap-sm" style="background:var(--surf);padding-top:2.5rem;">
+    <div class="chip reveal">Carbon Calculator</div>
+    <h2 class="sect-title reveal" style="font-size:clamp(2rem,5vw,3.5rem);">YOUR CARBON<br><span style="color:var(--accent)">FOOTPRINT</span></h2>
+    <p style="color:var(--muted);margin-top:.65rem;font-size:.95rem;" class="reveal">Calculate how many mangrove trees would need to be protected to offset your travel emissions.</p>
+    <div class="calc-grid">
+      <div class="calc-p reveal slide-left">
+        <div class="calc-t">Add Your Trips</div>
+        <div class="calc-sub">Enter flights and driving to calculate annual CO₂ emissions</div>
+        <label class="fl">Trip Type</label>
+        <select class="fs" id="tripType" style="margin-bottom:.65rem;">
+          <option value="dom">Domestic flight (≤1,500 km)</option>
+          <option value="short">Short-haul flight (1,500–4,000 km)</option>
+          <option value="long">Long-haul flight (4,000+ km)</option>
+        </select>
+        <label class="fl">Distance (km, one-way)</label>
+        <div class="ci-row">
+          <input type="number" class="fi" id="tripDist" placeholder="e.g. 2500" min="0">
+          <button class="ci-add" onclick="addTrip()">+ Add</button>
+        </div>
+        <div class="trip-list" id="tripList"></div>
+        <label class="fl" style="margin-top:.75rem;">Car Driving (km/month)</label>
+        <input type="number" class="fi" id="carKm" placeholder="e.g. 800" min="0" style="margin-bottom:.85rem;">
+        <button class="btn-p" style="width:100%;justify-content:center;" onclick="calcCarbon()">🌿 Calculate My Footprint</button>
+      </div>
+      <div class="calc-p reveal slide-right">
+        <div class="calc-res" id="calcRes">
+          <div class="cr-row"><span class="cr-key">Annual CO₂</span><span class="cr-v" id="rCO2">0 t</span></div>
+          <div class="cr-row"><span class="cr-key">From Flights</span><span class="cr-v" id="rFlt">0 t</span></div>
+          <div class="cr-row"><span class="cr-key">From Driving</span><span class="cr-v" id="rDrv">0 t</span></div>
+          <div class="cr-trees"><span class="n" id="rTrees">0</span><span class="l">Mangrove trees needed to offset</span></div>
+        </div>
+        <div class="calc-ph" id="calcPh">
+          <div class="ico">🌿</div>
+          <p>Add your trips and hit Calculate to see your footprint</p>
+          <small>1 mangrove tree ≈ 0.5 tonnes CO₂/year sequestered</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Event -->
+  <div class="wrap" style="padding-top:3rem;">
+    <div class="chip reveal">The Event</div>
+    <h2 class="sect-title reveal">OPERATION<br><span style="color:var(--accent)">MANGROVE</span></h2>
+    <div class="event-card reveal">
+      <div class="ev-ey">Mission Briefing</div>
+      <div class="ev-title">Mangrove Conservation Scavenger Hunt</div>
+      <div class="ev-sub">Qurum Beach, Muscat, Oman · After Summer Holidays 2026</div>
+      <p class="ev-mission">A team-based field operation at one of Muscat's most important mangrove habitats. Participants work in squads to complete conservation challenges — collecting waste, recording field data, identifying species, and navigating ecological checkpoints — all while raising funds for NGOs protecting coastal ecosystems across Oman.</p>
+      <div class="ev-obj">
+        <div class="ev-obj-i"><span class="ev-obj-ico">🧹</span><div class="ev-obj-tx">Coastal waste collection &amp; removal at marked zones</div></div>
+        <div class="ev-obj-i"><span class="ev-obj-ico">📊</span><div class="ev-obj-tx">Field data: species counts, water clarity, root density</div></div>
+        <div class="ev-obj-i"><span class="ev-obj-ico">🗺️</span><div class="ev-obj-tx">Navigation checkpoints across the Qurum mangrove belt</div></div>
+        <div class="ev-obj-i"><span class="ev-obj-ico">📸</span><div class="ev-obj-tx">Photo documentation of ecosystem health</div></div>
+        <div class="ev-obj-i"><span class="ev-obj-ico">🌱</span><div class="ev-obj-tx">Seedling identification &amp; propagule relay tasks</div></div>
+        <div class="ev-obj-i"><span class="ev-obj-ico">🏆</span><div class="ev-obj-tx">Team scoring, leaderboard &amp; conservation prize</div></div>
+      </div>
+    </div>
+    <div class="logi-grid reveal">
+      <div class="logi-card"><div class="logi-h">Location</div><div class="logi-v">Qurum Beach</div><div class="logi-s">Muscat, Oman</div></div>
+      <div class="logi-card"><div class="logi-h">Date</div><div class="logi-v">Post-Summer 2026</div><div class="logi-s">Exact date TBC</div></div>
+      <div class="logi-card"><div class="logi-h">Time</div><div class="logi-v">TBC</div><div class="logi-s">Schedule released closer to event</div></div>
+      <div class="logi-card"><div class="logi-h">Entry Fee</div><div class="logi-v" style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:#2d6a4f;" id="evFee">2 OMR</div><div class="logi-s">100% donated to NGO</div></div>
+    </div>
+    <div class="roe-block reveal">
+      <div class="roe-ttl">📋 Rules of Engagement</div>
+      <div class="roe-list">
+        <div class="roe-i"><div class="roe-dot"></div><span>Teams of <strong>3 to 5 participants</strong> — no solo entries</span></div>
+        <div class="roe-i"><div class="roe-dot"></div><span><strong>Smartphone required</strong> per team for GPS, clue scanning &amp; photo submissions</span></div>
+        <div class="roe-i"><div class="roe-dot"></div><span>Entry fee <strong>2 OMR per person</strong> — all proceeds donated to mangrove NGO</span></div>
+        <div class="roe-i"><div class="roe-dot"></div><span>Stay within designated zones and follow the environmental code of conduct</span></div>
+        <div class="roe-i"><div class="roe-dot"></div><span>No littering, no disruption to wildlife, no removal of natural materials</span></div>
+      </div>
+    </div>
+    <div style="margin-top:2rem;">
+      <div class="chip reveal">Signup Process</div>
+      <div class="phase-grid reveal">
+        <div class="phase-s"><div class="ph-num">01</div><div class="ph-name">Team Registration</div><div class="ph-desc">Fill in the form with team name, members, and contact details.</div></div>
+        <div class="phase-s"><div class="ph-num">02</div><div class="ph-name">Payment</div><div class="ph-desc">Pay 2 OMR per member. A confirmation receipt will be issued.</div></div>
+        <div class="phase-s"><div class="ph-num">03</div><div class="ph-name">Briefing Pack</div><div class="ph-desc">Receive your team briefing document and entry QR code.</div></div>
+        <div class="phase-s"><div class="ph-num">04</div><div class="ph-name">Entry Confirmed</div><div class="ph-desc">Show QR code at the gate. Arrive 15 min early for roll-call.</div></div>
+      </div>
+      <div class="reg-cta reveal"><a href="#" class="btn-p">🌿 Register Your Team</a><span class="reg-note">Registration form link — updated closer to event date.</span></div>
+    </div>
+  </div>
+  <div class="ft-bar"><div><div class="ft-brand">🌿 MangroveWatch</div><div class="ft-copy">© 2026</div></div><div class="ft-credit">Website by Reuben John</div></div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     CONTACT PAGE
+══════════════════════════════════════════ -->
+<div class="page" id="pcontact">
+  <div class="wrap">
+    <div class="chip reveal">The Team</div>
+    <h2 class="sect-title reveal">MEET THE<br><span style="color:var(--accent)">TEAM</span></h2>
+    <div class="team-grid">
+      <div class="team-card reveal"><div class="t-av">R</div><div class="t-name">Reuben John</div><div class="t-div"></div><div class="t-role">Team Leader<br>Web Developer</div></div>
+      <div class="team-card reveal reveal-d1"><div class="t-av">A</div><div class="t-name">Anvesha</div><div class="t-div"></div><div class="t-role">Team Recorder<br>Social Media Handler</div></div>
+      <div class="team-card reveal reveal-d2"><div class="t-av">A</div><div class="t-name">Ayaan</div><div class="t-div"></div><div class="t-role">Team Checker</div></div>
+      <div class="team-card reveal reveal-d3"><div class="t-av">N</div><div class="t-name">Neeraj</div><div class="t-div"></div><div class="t-role">Team Encourager</div></div>
+    </div>
+
+    <div style="margin-top:3.5rem;">
+      <div class="chip reveal">Get In Touch</div>
+      <h2 class="sect-title reveal" style="font-size:clamp(2rem,4.5vw,3.5rem);">CONTACT<br><span style="color:var(--accent)">MANGROVEWATCH</span></h2>
+      <div class="contact-grid">
+        <div class="contact-info reveal slide-left">
+          <a href="mailto:reubenjohn2711@gmail.com" class="ci-item"><span class="ci-ico">✉️</span><div class="ci-info"><div class="ci-lbl">Email</div><div class="ci-val">reubenjohn2711@gmail.com</div></div></a>
+          <a href="tel:+96896270711" class="ci-item"><span class="ci-ico">📞</span><div class="ci-info"><div class="ci-lbl">Phone</div><div class="ci-val">+968 9627 0711</div></div></a>
+          <a href="https://www.instagram.com/mangrove.watch/" target="_blank" rel="noopener" class="ci-item ig"><span class="ci-ico">📸</span><div class="ci-info"><div class="ci-lbl">Instagram</div><div class="ci-val">@mangrove.watch</div></div></a>
+          <div class="ci-item" style="cursor:default;"><span class="ci-ico">📍</span><div class="ci-info"><div class="ci-lbl">Location</div><div class="ci-val">Muscat, Oman</div></div></div>
+        </div>
+        <div class="contact-form-wrap reveal slide-right">
+          <div class="cf-title">Send a Message</div>
+          <div class="cf-sub">Have a question or want to collaborate? Drop us a message.</div>
+          <div class="cf-ok" id="cfOk">🌿 Message sent! We'll be in touch soon.</div>
+          <form id="cfForm" onsubmit="submitCf(event)">
+            <div class="fg"><label class="fl">Name *</label><input type="text" class="fi" id="cfName" placeholder="Your full name" required></div>
+            <div class="fg"><label class="fl">Email *</label><input type="email" class="fi" id="cfEmail" placeholder="your@email.com" required></div>
+            <div class="fg"><label class="fl">Message *</label><textarea class="ft" id="cfMsg" rows="5" placeholder="Tell us how we can help…" required></textarea></div>
+            <button type="submit" class="btn-p" style="width:100%;justify-content:center;">📨 Send Message</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="ft-bar"><div><div class="ft-brand">🌿 MangroveWatch</div><div class="ft-copy">© 2026 MangroveWatch Awareness Project</div></div><div class="ft-credit" id="ftCredit2">Website by Reuben John</div></div>
+</div>
+
+<!-- ── Password overlay ── -->
+<div class="ov" id="pwOv">
+  <div class="pw-box">
+    <div class="pw-ico">🔐</div>
+    <div class="pw-t">Admin Access</div>
+    <div class="pw-s">Enter the access code to manage magazine content</div>
+    <input type="password" class="fi" id="pwIn" placeholder="Access code" style="text-align:center;letter-spacing:.25em;" autocomplete="off">
+    <div class="pw-err" id="pwErr">Incorrect code. Please try again.</div>
+    <div class="pw-acts"><button class="btn-p" style="flex:1;" onclick="checkPw()">Enter</button><button class="btn-o" style="flex:1;" onclick="closePw()">Cancel</button></div>
+  </div>
+</div>
+
+<!-- ── Admin overlay ── -->
+<div class="ov" id="admOv">
+  <div class="adm-box">
+    <button class="adm-x" onclick="closeAdm()">✕</button>
+    <div class="adm-t">🌿 Magazine Admin</div>
+    <div class="adm-s">MangroveWatch — Weekly Content Management</div>
+    <div class="adm-tabs">
+      <button class="atab on" onclick="aPane('upload',this)">Upload Pages</button>
+      <button class="atab" onclick="aPane('issues',this)">Manage Issues</button>
+    </div>
+    <div class="apane on" id="ap-upload">
+      <div class="fg"><label class="fl">Issue</label><select class="fs" id="issSel" onchange="toggleNewF()"><option value="new">＋ Create New Issue</option></select></div>
+      <div id="new-iss-f">
+        <div class="fg"><label class="fl">Issue Title</label><input type="text" class="fi" id="issTitle" placeholder="e.g. Volume 1 — April 2026"></div>
+        <div class="fg"><label class="fl">Description (optional)</label><textarea class="ft" id="issDesc" rows="2" placeholder="Brief description…"></textarea></div>
+      </div>
+      <div class="fg"><label class="fl">Magazine Pages <span style="color:var(--muted2);font-size:.6rem;">(upload in order)</span></label>
+        <div class="dz" id="dz" onclick="document.getElementById('fIn').click()"><p>📄 Click or drag &amp; drop page images</p><p class="sub2">JPG · PNG · WebP — Max 10 MB per file</p><input type="file" id="fIn" multiple accept="image/*" onchange="handleFiles(this.files)"></div>
+        <div class="prev-grid" id="prevGrid"></div>
+      </div>
+      <div class="prog-b" id="progB"><div class="prog-f" id="progF"></div></div>
+      <button class="btn-p" style="width:100%;margin-top:.75rem;justify-content:center;" onclick="pubIssue()">🌿 Publish Issue</button>
+    </div>
+    <div class="apane" id="ap-issues"><div class="iss-list" id="issList"><div class="spin" style="margin:2rem auto;"></div></div></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ── Supabase ── */
+const SB_URL = 'https://nrwzukwcxqwlvbtxnbmr.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5yd3p1a3djeHF3bHZidHhuYm1yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1OTg2NzYsImV4cCI6MjA4NzE3NDY3Nn0.grxE-4uBENlcjbt-Cw6Pt5DGrdkATi59VE3o734VgLo';
+const sb = supabase.createClient(SB_URL, SB_KEY);
+
+/* ── Custom cursor ── */
+const curEl = document.getElementById('cur');
+let mx=0,my=0,cx=0,cy=0;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;});
+(function anim(){cx+=(mx-cx)*.2;cy+=(my-cy)*.2;if(curEl){curEl.style.left=cx+'px';curEl.style.top=cy+'px';}requestAnimationFrame(anim);})();
+document.addEventListener('mouseover',e=>{if(e.target.closest('button,a,[onclick],.qcard,.fpill,.mpill,.th,.sp-card,.star,.fb-btn,.ipill'))curEl.classList.add('big');});
+document.addEventListener('mouseout',e=>{if(e.target.closest('button,a,[onclick],.qcard,.fpill,.mpill,.th,.sp-card,.star,.fb-btn,.ipill'))curEl.classList.remove('big');});
+
+/* ── Loader ── */
+const t0=Date.now();
+function hideLoader(){document.getElementById('ls').classList.add('gone');}
+document.fonts.ready.then(()=>setTimeout(hideLoader,Math.max(0,1900-(Date.now()-t0))));
+setTimeout(hideLoader,3800);
+
+/* ── Hero slide-in (fire after loader) ── */
+setTimeout(()=>{document.querySelectorAll('.hero-line').forEach((l,i)=>setTimeout(()=>l.classList.add('in'),i*140));},2100);
+
+/* ── Tutorial ── */
+const STEPS=[
+  {ico:'🌿',t:'Welcome to MangroveWatch',d:'An awareness project about the destruction of mangroves for urban infrastructure. Created by Reuben in 2026.',v:null},
+  {ico:'📖',t:'Navigate by Page',d:'Use the top menu (or hamburger on mobile) to jump between <strong>Home, Conservation, Species, Impact,</strong> and <strong>Contact</strong>.',v:[{i:'📉',x:'Conservation — crisis stats & charts'},{i:'🗺️',x:'Species — map & species database'},{i:'📖',x:'Impact — magazine, calculator & event'}]},
+  {ico:'💬',t:'Feedback & Queries',d:'Scroll down on the <strong>Home page</strong> to leave us feedback, rate the project, or send a direct query — all stored in our database.',v:null},
+  {ico:'🏅',t:'Join Operation Mangrove',d:'Visit <strong>Impact</strong> for our weekly magazine and the Qurum Beach scavenger hunt details — 2 OMR entry, all funds donated.',v:[{i:'📍',x:'Qurum Beach, Muscat, Oman'},{i:'👥',x:'Teams of 3–5, phone required'}]},
+  {ico:'⚙️',t:'Settings & Accessibility',d:'Click the Settings button in the nav bar to switch themes (Dark/Light/High Contrast), adjust font size, change language, currency, and toggle the ambient mangrove soundscape.',v:null}
+];
+let ts=0;
+function rTut(){
+  const s=STEPS[ts];const pct=Math.round(((ts+1)/STEPS.length)*100);
+  document.getElementById('tBar').style.width=pct+'%';
+  document.getElementById('tStep').textContent=`Step ${ts+1} of ${STEPS.length}`;
+  document.getElementById('tIcon').textContent=s.ico;
+  document.getElementById('tTitle').textContent=s.t;
+  document.getElementById('tDesc').innerHTML=s.d;
+  const vis=document.getElementById('tVis');
+  if(s.v){vis.style.display='block';vis.innerHTML=s.v.map(v=>`<div class="kv"><span style="min-width:24px;">${v.i}</span>${v.x}</div>`).join('');}
+  else vis.style.display='none';
+  document.getElementById('tNext').textContent=ts===STEPS.length-1?'🌿 Get Started':'Next →';
+  document.getElementById('tSkip').style.display=ts===STEPS.length-1?'none':'';
+  const dots=document.getElementById('tDots');dots.innerHTML='';
+  STEPS.forEach((_,i)=>{const d=document.createElement('div');d.className='tut-dot'+(i===ts?' on':'');dots.appendChild(d);});
+}
+function tutNext(){if(ts<STEPS.length-1){ts++;rTut();}else closeTut();}
+function openTut(){ts=0;rTut();document.getElementById('tut').classList.add('on');}
+function closeTut(){document.getElementById('tut').classList.remove('on');localStorage.setItem('mw26_tut','1');}
+setTimeout(()=>{if(!localStorage.getItem('mw26_tut'))openTut();},2400);
+
+/* ── Settings ── */
+function toggleSettings(){
+  document.getElementById('sPanel').classList.toggle('on');
+}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.set-wrap'))document.getElementById('sPanel').classList.remove('on');
+});
+function setTheme(t){
+  document.documentElement.setAttribute('data-theme',t);
+  localStorage.setItem('mw26_theme',t);
+  document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('on'));
+  document.querySelectorAll(`.theme-btn`).forEach(b=>{if(b.textContent.toLowerCase().replace(' ','-')===t||b.onclick?.toString().includes(`'${t}'`))b.classList.add('on');});
+}
+function setFZ(v){document.documentElement.setAttribute('data-fz',v);localStorage.setItem('mw26_fz',v);}
+function setLang(v){document.documentElement.lang=v;localStorage.setItem('mw26_lang',v);}
+const CR={OMR:1,USD:2.6,EUR:2.38,GBP:2.04,INR:216};
+const CS={OMR:'OMR',USD:'$',EUR:'€',GBP:'£',INR:'₹'};
+function setCurr(c){const r=CR[c]||1;const s=CS[c]||c;const v=(2*r).toFixed(2);document.getElementById('evFee').textContent=`${s}${v}`;localStorage.setItem('mw26_curr',c);}
+// Load saved
+(()=>{
+  const t=localStorage.getItem('mw26_theme')||'dark';
+  const fz=localStorage.getItem('mw26_fz')||'md';
+  const c=localStorage.getItem('mw26_curr')||'OMR';
+  setTheme(t);setFZ(fz);setCurr(c);
+})();
+
+/* ── Mobile nav ── */
+function toggleMob(){
+  document.getElementById('mob-nav').classList.toggle('on');
+  document.getElementById('ham').classList.toggle('on');
+}
+
+/* ── Scroll reveal ── */
+const revIO=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('vis');if(e.target.dataset.chart)triggerChart(e.target);}});
+},{threshold:.14});
+function initReveal(){document.querySelectorAll('.reveal').forEach(el=>revIO.observe(el));}
+initReveal();
+
+/* ── Chart reveal ── */
+let chartsOK=false;
+function triggerChart(card){
+  const d1=document.getElementById('df1');
+  if(d1&&!d1.dataset.ok){d1.dataset.ok='1';const c=2*Math.PI*42;d1.style.strokeDasharray=`${c*.35} ${c}`;let v=0;const lb=document.getElementById('dl1');const t=setInterval(()=>{v=Math.min(v+1,35);if(lb)lb.textContent=v+'%';if(v>=35)clearInterval(t);},40);}
+  ['b1','b2','b3'].forEach(id=>{const b=document.getElementById(id);if(b&&!b.dataset.ok){b.dataset.ok='1';setTimeout(()=>b.style.width=b.dataset.w+'%',80);}});
+  const sp=document.getElementById('spPath');if(sp&&!sp.dataset.ok){sp.dataset.ok='1';sp.style.strokeDashoffset='0';}
+}
+// Observe chart cards on conservation page
+const ccObs=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('vis');triggerChart(e.target);}}),{threshold:.16});
+document.querySelectorAll('.cc').forEach(el=>ccObs.observe(el));
+
+// Sparkline tooltips
+const SPDATA=[
+  {year:1980,ha:7.0,ev:'Peak global mangrove cover — ~7 million ha'},
+  {year:1990,ha:6.0,ev:'Aquaculture boom in SE Asia accelerates loss'},
+  {year:2000,ha:5.2,ev:'FAO documents loss rate exceeding 1% per year'},
+  {year:2010,ha:4.5,ev:'RAMSAR convention strengthens wetland protections'},
+  {year:2016,ha:4.0,ev:'Paris Agreement: blue carbon included in NDCs'},
+  {year:2024,ha:3.4,ev:'Current estimated global cover — 3.4 million ha'}
+];
+for(let i=0;i<6;i++){const el=document.getElementById('sp'+i);if(!el)continue;el.addEventListener('mouseover',ev=>{const d=SPDATA[i];const tip=document.getElementById('spTip');if(!tip||!d)return;const rect=document.getElementById('spWrap').getBoundingClientRect();tip.innerHTML=`<b>${d.year} — ${d.ha}M ha</b>${d.ev}`;tip.style.display='block';const lx=ev.clientX-rect.left;tip.style.left=(lx>135?lx-185:lx+10)+'px';tip.style.top=(ev.clientY-rect.top-12)+'px';});el.addEventListener('mouseout',()=>{const t=document.getElementById('spTip');if(t)t.style.display='none';});}
+
+// Interactive metric comparison
+const METRICS={
+  carbon:{label:"Carbon Storage — Tonnes of CO₂ per Hectare",unit:"t/ha",pct:[100,20,8],txt:["1,000 t","~200 t","~80 t"]},
+  biodiversity:{label:"Biodiversity Score — Species Richness Index (0–100)",unit:"index",pct:[95,88,45],txt:["95","88","45"]},
+  economic:{label:"Economic Value — USD per Hectare per Year",unit:"$/ha/yr",pct:[100,28,9],txt:["$194,000","$2,500","$800"]},
+  coastal:{label:"Wave Energy Reduction (%)",unit:"%",pct:[100,7,3],txt:["70%","5%","2%"]}
+};
+function setMetric(k,btn){
+  document.querySelectorAll('.mpill').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
+  const m=METRICS[k];document.getElementById('mLabel').textContent=m.label;
+  ['c1','c2','c3'].forEach((id,i)=>{const el=document.getElementById(id);if(!el)return;el.style.width='0%';setTimeout(()=>{el.style.width=m.pct[i]+'%';el.textContent=m.txt[i];},60);document.getElementById('u'+(i+1)).textContent=m.unit;});
+}
+setTimeout(()=>setMetric('carbon',document.querySelector('.mpill.on')),600);
+
+/* ── Page routing ── */
+const PAGES={home:'ph',conservation:'pconservation',species:'pspecies',impact:'pimpact',contact:'pcontact'};
+let curP='home',mapInited=false;
+function go(pid,push=true){
+  if(!PAGES[pid])pid='home';
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  const pg=document.getElementById(PAGES[pid]);
+  if(pg){pg.classList.add('on');}
+  document.querySelectorAll('[data-p]').forEach(el=>el.classList.toggle('act',el.dataset.p===pid));
+  curP=pid;
+  if(push)history.pushState({p:pid},'','#'+pid);
+  window.scrollTo({top:0,behavior:'smooth'});
+  setTimeout(initReveal,80);
+  if(pid==='species'&&!mapInited){setTimeout(initMap,200);}
+  if(pid==='impact')loadMag();
+  if(pid==='species')loadSpecies();
+  if(pid==='conservation'&&!chartsOK){chartsOK=true;setTimeout(()=>document.querySelectorAll('.cc').forEach(c=>ccObs.observe(c)),100);}
+}
+window.addEventListener('popstate',e=>{const pid=(e.state?.p)||location.hash.slice(1)||'home';go(pid,false);});
+const initHash=location.hash.slice(1)||'home';
+go(Object.keys(PAGES).includes(initHash)?initHash:'home',false);
+
+/* ── Weather ── */
+const WMO={0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',51:'🌦️',61:'🌧️',71:'🌨️',80:'🌧️',95:'⛈️'};
+async function fetchWeather(){
+  try{
+    const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude=23.5859&longitude=58.4059&current=temperature_2m,wind_speed_10m,weather_code&timezone=Asia/Muscat');
+    const d=await r.json();const cu=d.current;
+    document.getElementById('wwTmp').textContent=Math.round(cu.temperature_2m)+'°C';
+    let ico='🌡️';for(const k of Object.keys(WMO).map(Number).sort((a,b)=>b-a)){if(cu.weather_code>=k){ico=WMO[k];break;}}
+    document.getElementById('wwIco').textContent=ico;
+    document.getElementById('wwInfo').textContent=`💨 ${Math.round(cu.wind_speed_10m)} km/h`;
+  }catch{}
+}
+function updateTide(){
+  const t=Date.now()/1000,p=44712,tide=(Math.sin(2*Math.PI*t/p)+1)/2;
+  const el=document.getElementById('tideF'),lb=document.getElementById('tideLbl');
+  if(el)el.style.width=(tide*100)+'%';
+  if(lb)lb.textContent=`~${(tide*1.8).toFixed(1)}m ${tide>.5?'↑':'↓'}`;
+}
+fetchWeather();updateTide();setInterval(updateTide,60000);
+
+/* ── Leaflet map ── */
+let lmap=null,sLayer=null,satLayer=null;
+const SPOTS=[
+  {lat:23.5916,lng:58.3834,n:"Al Qurum Natural Reserve",c:"Oman",t:"critical",a:"850 ha",note:"Largest protected mangrove zone in Muscat. Under pressure from urban encroachment."},
+  {lat:22.5167,lng:59.7667,n:"Ras al Hadd Coast",c:"Oman",t:"moderate",a:"320 ha",note:"Nesting ground for Hawksbill sea turtles. Seasonal monitoring in place."},
+  {lat:25.0294,lng:56.3607,n:"Khor Kalba",c:"UAE",t:"high",a:"200 ha",note:"Northernmost mangrove forest in the world. Habitat for the White-collared Kingfisher."},
+  {lat:21.9497,lng:89.1833,n:"Sundarbans Delta",c:"India/Bangladesh",t:"critical",a:"10,000 km²",note:"World's largest mangrove forest. Home to Bengal Tigers. Rising sea levels are a major threat."},
+  {lat:19.0896,lng:72.8553,n:"Mumbai Mangroves",c:"India",t:"high",a:"6,600 ha",note:"Critical storm buffer. Severely threatened by illegal encroachment and reclamation."},
+  {lat:10.4000,lng:79.5000,n:"Muthupet Lagoon",c:"India",t:"moderate",a:"6,877 ha",note:"Breeding ground for flamingos and pelicans. Ramsar Wetland of International Importance."}
+];
+const TC={critical:'#e53935',high:'#fb8c00',moderate:'#fdd835',low:'#43a047'};
+function initMap(){
+  if(mapInited)return;mapInited=true;
+  const el=document.getElementById('lmap');if(!el||!window.L)return;
+  lmap=L.map('lmap',{center:[22,70],zoom:4,zoomControl:true});
+  sLayer=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:18}).addTo(lmap);
+  satLayer=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'© Esri',maxZoom:18});
+  SPOTS.forEach(s=>{
+    const col=TC[s.t]||'#43a047';
+    const ico=L.divIcon({className:'',html:`<div style="width:30px;height:30px;border-radius:50%;background:${col};border:2.5px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font-size:.65rem;font-family:'Bebas Neue',sans-serif;color:#fff;">${s.t==='critical'?'!':s.t[0].toUpperCase()}</div>`,iconSize:[30,30],iconAnchor:[15,15]});
+    L.marker([s.lat,s.lng],{icon:ico}).addTo(lmap).bindPopup(`<div style="font-family:'Barlow Condensed',sans-serif;min-width:195px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:1.05rem;letter-spacing:.05em;margin-bottom:.25rem;">${s.n}</div><div style="font-size:.74rem;color:#666;margin-bottom:.35rem;">📍 ${s.c}</div><div style="display:flex;gap:.35rem;margin-bottom:.45rem;flex-wrap:wrap;"><span style="padding:.12rem .42rem;border-radius:3px;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;background:${col}22;color:${col};border:1px solid ${col}44;">${s.t}</span><span style="padding:.12rem .42rem;border-radius:3px;font-size:.62rem;background:#eee;color:#555;">📏 ${s.a}</span></div><div style="font-size:.8rem;color:#444;line-height:1.5;">${s.note}</div></div>`,{maxWidth:255});
+  });
+}
+function setLayer(v){
+  if(!lmap)return;
+  document.getElementById('mcStr').classList.toggle('on',v==='street');
+  document.getElementById('mcSat').classList.toggle('on',v==='sat');
+  if(v==='street'){if(lmap.hasLayer(satLayer))lmap.removeLayer(satLayer);if(!lmap.hasLayer(sLayer))sLayer.addTo(lmap);}
+  else{if(lmap.hasLayer(sLayer))lmap.removeLayer(sLayer);if(!lmap.hasLayer(satLayer))satLayer.addTo(lmap);}
+}
+
+/* ── Species ── */
+let allSp=[],spLoaded=false;
+async function loadSpecies(){
+  if(spLoaded)return;spLoaded=true;
+  const{data}=await sb.from('mangrove_species').select('*').order('type').order('common_name');
+  allSp=data||[];renderSp(allSp);
+}
+function filterSp(type,btn){
+  document.querySelectorAll('.fpill').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
+  renderSp(type==='all'?allSp:allSp.filter(s=>s.type===type));
+}
+function renderSp(list){
+  const g=document.getElementById('spGrid');
+  if(!list.length){g.innerHTML='<p style="font-family:\'Barlow Condensed\',sans-serif;padding:2rem;color:var(--muted2);">No species found.</p>';return;}
+  g.innerHTML=list.map((s,i)=>`<div class="sp-card" style="transition-delay:${i*.04}s;">
+    <div class="sp-hd"><span class="sp-em">${s.emoji||'🌿'}</span><div class="sp-nm"><h4>${s.common_name}</h4><small>${s.scientific_name||''}</small></div></div>
+    <div class="sp-tags"><span class="sp-tag ${s.type}">${s.type}</span>${s.conservation_status?`<span class="sp-tag ${s.threat_level}">${s.conservation_status}</span>`:''}</div>
+    <p class="sp-desc">${s.description||''}</p>
+    ${s.fun_fact?`<p class="sp-fact">💡 ${s.fun_fact}</p>`:''}
+    ${s.region?.length?`<div class="sp-rgns">${s.region.map(r=>`<span class="sp-rgn">${r}</span>`).join('')}</div>`:''}
+  </div>`).join('');
+  setTimeout(()=>g.querySelectorAll('.sp-card').forEach((c,i)=>setTimeout(()=>c.classList.add('vis2'),i*45)),60);
+}
+
+/* ── Carbon calculator ── */
+let trips=[];
+const EF={dom:.255,short:.195,long:.148};
+function addTrip(){
+  const type=document.getElementById('tripType').value;
+  const dist=parseFloat(document.getElementById('tripDist').value)||0;
+  if(dist<=0){toast('Enter a valid distance.','err');return;}
+  const opts=document.getElementById('tripType').options;
+  trips.push({type,dist,lbl:`${opts[opts.selectedIndex].text.split('(')[0].trim()} — ${dist.toLocaleString()} km`});
+  document.getElementById('tripDist').value='';
+  renderTrips();
+}
+function rmTrip(i){trips.splice(i,1);renderTrips();}
+function renderTrips(){document.getElementById('tripList').innerHTML=trips.map((t,i)=>`<div class="trip-item"><span>${t.lbl}</span><button class="trip-rm" onclick="rmTrip(${i})">✕</button></div>`).join('');}
+function calcCarbon(){
+  const fl=trips.reduce((s,t)=>s+(t.dist*EF[t.type]*2)/1000,0);
+  const drv=(parseFloat(document.getElementById('carKm').value)||0)*12*.12/1000;
+  const tot=fl+drv;const trees=Math.ceil(tot/.5);
+  document.getElementById('rCO2').textContent=tot.toFixed(2)+' t';
+  document.getElementById('rFlt').textContent=fl.toFixed(2)+' t';
+  document.getElementById('rDrv').textContent=drv.toFixed(2)+' t';
+  document.getElementById('rTrees').textContent=trees.toLocaleString();
+  document.getElementById('calcRes').style.display='block';
+  document.getElementById('calcPh').style.display='none';
+}
+
+/* ── Ambient audio ── */
+let audioCtx=null,aGain=null,aNoise=null,ambOn=false;
+function toggleAudio(){
+  ambOn=!ambOn;
+  ['ambTog','ambTogMob'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.toggle('on',ambOn);});
+  if(ambOn){
+    if(!audioCtx){
+      audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+      const buf=audioCtx.createBuffer(1,4096,audioCtx.sampleRate);
+      const data=buf.getChannelData(0);let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+      for(let i=0;i<4096;i++){const w=Math.random()*2-1;b0=.99886*b0+w*.0555179;b1=.99332*b1+w*.0750759;b2=.96900*b2+w*.1538520;b3=.86650*b3+w*.3104856;b4=.55000*b4+w*.5329522;b5=-.7616*b5-w*.0168980;data[i]=(b0+b1+b2+b3+b4+b5+b6+w*.5362)/6;b6=w*.115926;}
+      aNoise=audioCtx.createBufferSource();aNoise.buffer=buf;aNoise.loop=true;
+      const f=audioCtx.createBiquadFilter();f.type='lowpass';f.frequency.value=550;f.Q.value=0.4;
+      aGain=audioCtx.createGain();aGain.gain.value=0.11;
+      aNoise.connect(f);f.connect(aGain);aGain.connect(audioCtx.destination);aNoise.start();
+    }else if(aGain)aGain.gain.setTargetAtTime(.11,audioCtx.currentTime,.3);
+  }else{if(aGain)aGain.gain.setTargetAtTime(0,audioCtx.currentTime,.5);}
+}
+
+/* ── Magazine ── */
+let allIss=[],curPgs=[],curIdx=0,vW=0,vH=0,magOK=false;
+async function loadMag(){
+  if(magOK)return;magOK=true;
+  document.getElementById('magSpin').style.display='block';
+  document.getElementById('magEmpty').style.display='none';
+  document.getElementById('magStage').style.display='none';
+  const{data:iss}=await sb.from('magazine_issues').select('id,issue_number,title').order('issue_number');
+  allIss=iss||[];
+  const pills=document.getElementById('issuePills');pills.innerHTML='';
+  allIss.forEach((is,i)=>{
+    const b=document.createElement('button');b.className='ipill'+(i===0?' on':'');
+    b.textContent=`Issue ${is.issue_number}`;
+    b.onclick=()=>{document.querySelectorAll('.ipill').forEach(p=>p.classList.remove('on'));b.classList.add('on');magOK=false;loadPgs(is.id);};
+    pills.appendChild(b);
+  });
+  document.getElementById('magSpin').style.display='none';
+  if(!allIss.length){document.getElementById('magEmpty').style.display='block';return;}
+  await loadPgs(allIss[0].id);
+}
+async function loadPgs(id){
+  document.getElementById('magSpin').style.display='block';
+  document.getElementById('magStage').style.display='none';
+  const{data:pgs}=await sb.from('magazine_pages').select('*').eq('issue_id',id).order('page_number');
+  document.getElementById('magSpin').style.display='none';
+  if(!pgs?.length){document.getElementById('magEmpty').style.display='block';return;}
+  curPgs=pgs;curIdx=0;buildViewer(pgs);
+}
+function buildViewer(pgs){
+  const mob=window.innerWidth<540;
+  vW=mob?Math.min(window.innerWidth-40,320):Math.min(window.innerWidth-200,640);
+  vH=Math.round(vW*1.414);
+  const vp=document.getElementById('fb-vp'),tr=document.getElementById('fb-tr'),th=document.getElementById('thStrip');
+  vp.style.cssText=`width:${vW}px;height:${vH}px;`;tr.innerHTML='';th.innerHTML='';
+  pgs.forEach((p,i)=>{
+    const sl=document.createElement('div');sl.className='fb-slide';sl.style.cssText=`width:${vW}px;height:${vH}px;`;
+    const img=document.createElement('img');img.src=p.image_url;img.alt=`Page ${p.page_number}`;img.loading=i===0?'eager':'lazy';
+    sl.appendChild(img);tr.appendChild(sl);
+    const t=document.createElement('div');t.className='th'+(i===0?' on':'');
+    t.innerHTML=`<img src="${p.image_url}" alt="" loading="lazy">`;t.onclick=()=>pgTo(i);th.appendChild(t);
+  });
+  document.getElementById('magStage').style.display='flex';
+  document.getElementById('prevP').disabled=true;
+  document.getElementById('nextP').disabled=pgs.length<=1;
+  pgTo(0);
+  let sx=0;
+  vp.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;},{passive:true,once:true});
+  vp.addEventListener('touchend',e=>{const d=sx-e.changedTouches[0].clientX;if(Math.abs(d)>44)d>0?pgTo(curIdx+1):pgTo(curIdx-1);},{once:true});
+  document.onkeydown=e=>{
+    if(document.getElementById('admOv').classList.contains('on'))return;
+    if(e.key==='ArrowRight')pgTo(curIdx+1);if(e.key==='ArrowLeft')pgTo(curIdx-1);
+  };
+  document.getElementById('prevP').onclick=()=>pgTo(curIdx-1);
+  document.getElementById('nextP').onclick=()=>pgTo(curIdx+1);
+}
+function pgTo(i){
+  const n=curPgs.length;if(i<0||i>=n)return;curIdx=i;
+  document.getElementById('fb-tr').style.transform=`translateX(-${i*vW}px)`;
+  document.getElementById('pgB').textContent=`${i+1} / ${n}`;
+  document.getElementById('pgCtr').textContent=`Page ${i+1} of ${n}`;
+  document.querySelectorAll('.th').forEach((t,j)=>t.classList.toggle('on',j===i));
+  document.getElementById('prevP').disabled=i===0;
+  document.getElementById('nextP').disabled=i===n-1;
+  document.querySelectorAll('.th')[i]?.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'});
+}
+window.addEventListener('resize',()=>{if(curPgs.length&&curP==='impact')buildViewer(curPgs);});
+
+/* ── Feedback / Query forms ── */
+let starVal=0;
+function setStar(v){starVal=v;document.querySelectorAll('.star').forEach((s,i)=>s.classList.toggle('on',i<v));}
+async function submitFb(e){
+  e.preventDefault();
+  const msg=document.getElementById('fbMsg').value.trim();if(!msg)return;
+  const{error}=await sb.from('feedback').insert({name:document.getElementById('fbName').value||null,email:document.getElementById('fbEmail').value||null,rating:starVal||null,message:msg});
+  if(error){toast('Could not submit. Try again.','err');return;}
+  document.getElementById('fbForm').style.display='none';
+  document.getElementById('fbOk').style.display='block';
+  toast('Feedback submitted! 🌿','ok');
+}
+async function submitQ(e){
+  e.preventDefault();
+  const{error}=await sb.from('queries').insert({name:document.getElementById('qName').value,email:document.getElementById('qEmail').value,subject:document.getElementById('qSubject').value,message:document.getElementById('qMsg').value});
+  if(error){toast('Could not send. Try again.','err');return;}
+  document.getElementById('qForm').style.display='none';
+  document.getElementById('qOk').style.display='block';
+  toast('Query sent! 🌿','ok');
+}
+async function submitCf(e){
+  e.preventDefault();
+  const{error}=await sb.from('queries').insert({name:document.getElementById('cfName').value,email:document.getElementById('cfEmail').value,subject:'Contact page message',message:document.getElementById('cfMsg').value});
+  if(error){toast('Could not send. Try again.','err');return;}
+  document.getElementById('cfForm').style.display='none';
+  document.getElementById('cfOk').style.display='block';
+  toast('Message sent! 🌿','ok');
+}
+
+/* ── Admin ── */
+let clicks=0,cT=null;
+['ftCredit','ftCredit2'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el)el.addEventListener('click',()=>{clicks++;clearTimeout(cT);cT=setTimeout(()=>{clicks=0;},2200);if(clicks>=5){clicks=0;openPwOv();}});
+});
+if(location.hash==='#admin')openPwOv();
+function openPwOv(){document.getElementById('pwOv').classList.add('on');setTimeout(()=>document.getElementById('pwIn').focus(),100);}
+function closePw(){document.getElementById('pwOv').classList.remove('on');document.getElementById('pwIn').value='';document.getElementById('pwErr').style.display='none';}
+function checkPw(){if(document.getElementById('pwIn').value.trim()==='21812329'){closePw();openAdm();}else{document.getElementById('pwErr').style.display='block';document.getElementById('pwIn').value='';document.getElementById('pwIn').focus();}}
+document.getElementById('pwIn').addEventListener('keydown',e=>{if(e.key==='Enter')checkPw();if(e.key==='Escape')closePw();});
+async function openAdm(){document.getElementById('admOv').classList.add('on');await loadIssuesSel();}
+function closeAdm(){document.getElementById('admOv').classList.remove('on');}
+function aPane(p,btn){document.querySelectorAll('.atab').forEach(t=>t.classList.remove('on'));document.querySelectorAll('.apane').forEach(x=>x.classList.remove('on'));btn.classList.add('on');document.getElementById('ap-'+p).classList.add('on');if(p==='issues')renderIssuesList();}
+function toggleNewF(){document.getElementById('new-iss-f').style.display=document.getElementById('issSel').value==='new'?'block':'none';}
+async function loadIssuesSel(){const{data}=await sb.from('magazine_issues').select('id,issue_number,title').order('issue_number');const s=document.getElementById('issSel');s.innerHTML='<option value="new">＋ Create New Issue</option>';(data||[]).forEach(is=>{const o=document.createElement('option');o.value=is.id;o.textContent=`Issue ${is.issue_number}: ${is.title}`;s.appendChild(o);});toggleNewF();}
+let uplFiles=[];
+const dz=document.getElementById('dz');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('ov2');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('ov2'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('ov2');handleFiles(e.dataTransfer.files);});
+function handleFiles(files){uplFiles=[...uplFiles,...Array.from(files).filter(f=>f.type.startsWith('image/'))];renderPrev();}
+function rmFile(i){uplFiles.splice(i,1);renderPrev();}
+function renderPrev(){const g=document.getElementById('prevGrid');g.innerHTML='';uplFiles.forEach((f,i)=>{const r=new FileReader();r.onload=ev=>{const d=document.createElement('div');d.className='pi';d.innerHTML=`<img src="${ev.target.result}" alt=""><div class="pgn">Page ${i+1}</div><button class="rm" onclick="rmFile(${i})">✕</button>`;g.appendChild(d);};r.readAsDataURL(f);});}
+async function pubIssue(){
+  if(!uplFiles.length){toast('Select at least one page image.','err');return;}
+  const bar=document.getElementById('progB'),fill=document.getElementById('progF');bar.style.display='block';fill.style.width='0%';
+  try{
+    let issId=document.getElementById('issSel').value;
+    if(issId==='new'){
+      const title=document.getElementById('issTitle').value.trim();if(!title){toast('Enter issue title.','err');return;}
+      const{data:ex}=await sb.from('magazine_issues').select('issue_number').order('issue_number',{ascending:false}).limit(1);
+      const n=((ex?.[0]?.issue_number)||0)+1;
+      const{data:ni,error:ie}=await sb.from('magazine_issues').insert({issue_number:n,title,description:document.getElementById('issDesc').value.trim()}).select().single();
+      if(ie)throw ie;issId=ni.id;
+    }
+    for(let i=0;i<uplFiles.length;i++){
+      const f=uplFiles[i];const ext=f.name.split('.').pop().toLowerCase()||'jpg';
+      const path=`${issId}/page_${String(i+1).padStart(3,'0')}.${ext}`;
+      const{error:ue}=await sb.storage.from('magazine-images').upload(path,f,{upsert:true,contentType:f.type});if(ue)throw ue;
+      const{data:{publicUrl}}=sb.storage.from('magazine-images').getPublicUrl(path);
+      const{error:de}=await sb.from('magazine_pages').upsert({issue_id:issId,page_number:i+1,image_url:publicUrl},{onConflict:'issue_id,page_number'});if(de)throw de;
+      fill.style.width=`${Math.round(((i+1)/uplFiles.length)*100)}%`;
+    }
+    toast('Issue published! 🌿','ok');
+    uplFiles=[];document.getElementById('prevGrid').innerHTML='';
+    document.getElementById('issTitle').value='';document.getElementById('issDesc').value='';
+    bar.style.display='none';await loadIssuesSel();magOK=false;
+  }catch(err){console.error(err);toast('Upload failed: '+err.message,'err');bar.style.display='none';}
+}
+async function renderIssuesList(){
+  const list=document.getElementById('issList');list.innerHTML='<div class="spin" style="margin:2rem auto;"></div>';
+  const{data,error}=await sb.from('magazine_issues').select('id,issue_number,title,published_at,magazine_pages(count)').order('issue_number');
+  if(error||!data?.length){list.innerHTML='<p style="text-align:center;padding:2rem;color:var(--muted2);">No issues yet.</p>';return;}
+  list.innerHTML='';
+  data.forEach(is=>{const pgs=is.magazine_pages?.[0]?.count??0;const d=document.createElement('div');d.className='iss-row';d.innerHTML=`<div class="ir-info"><h4>Issue ${is.issue_number}: ${is.title}</h4><small>${pgs} page${pgs!==1?'s':''} · ${new Date(is.published_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</small></div><button class="del-btn" onclick="delIssue('${is.id}',this)">Delete</button>`;list.appendChild(d);});
+}
+async function delIssue(id,btn){if(!confirm('Delete this issue?'))return;btn.textContent='…';btn.disabled=true;const{error}=await sb.from('magazine_issues').delete().eq('id',id);if(error){toast('Delete failed.','err');btn.textContent='Delete';btn.disabled=false;return;}toast('Deleted.','ok');await renderIssuesList();magOK=false;}
+
+/* ── Toast ── */
+function toast(msg,type='ok'){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast ${type} on`;setTimeout(()=>t.classList.remove('on'),3200);}
+</script>
+</body>
+</html>
