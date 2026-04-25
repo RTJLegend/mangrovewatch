@@ -405,10 +405,27 @@ button{ font-family:inherit; cursor:pointer; }
   width:min(92vw,285px); background:var(--surf);
   border:1px solid var(--border); border-radius:10px;
   padding:1rem; box-shadow:var(--shadow);
-  display:none; flex-direction:column; gap:.85rem;
+  display:flex; flex-direction:column; gap:.85rem;
   z-index:2001;
+  /* hidden state — position:absolute means no layout impact */
+  visibility:hidden; opacity:0;
+  transform:scale(.86) translateY(-10px);
+  transform-origin:top right;
+  pointer-events:none;
+  transition:opacity .18s ease, transform .18s ease, visibility 0s linear .18s;
 }
-.set-panel.on{ display:flex; }
+.set-panel.on{
+  visibility:visible; opacity:1; transform:scale(1) translateY(0);
+  pointer-events:auto;
+  transition:visibility 0s linear 0s;
+  animation:settingsPop .34s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes settingsPop{
+  0%  { opacity:0; transform:scale(.8) translateY(-14px); }
+  55% { opacity:1; transform:scale(1.04) translateY(2px); }
+  75% { transform:scale(.985) translateY(-1px); }
+  100%{ opacity:1; transform:scale(1) translateY(0); }
+}
 .s-head{ font-family:'Barlow Condensed',sans-serif; font-size:.63rem; letter-spacing:.22em; text-transform:uppercase; color:var(--muted2); margin-bottom:.35rem; }
 .s-row{ display:flex; align-items:center; justify-content:space-between; gap:.5rem; }
 .s-lbl{ font-family:'Barlow Condensed',sans-serif; font-size:.76rem; letter-spacing:.07em; color:var(--muted); }
@@ -433,6 +450,56 @@ button{ font-family:inherit; cursor:pointer; }
 .tog::after{ content:''; position:absolute; width:14px; height:14px; border-radius:50%; background:#fff; top:3px; left:3px; transition:left .2s; }
 .tog.on{ background:var(--accent); }
 .tog.on::after{ left:19px; }
+
+/* ── Theme Slider — Glassmorphism segmented control ── */
+.theme-sl-wrap{ width:100%; }
+.theme-sl-track{
+  display:grid; grid-template-columns:repeat(4,1fr);
+  position:relative;
+  background:rgba(255,255,255,.07);
+  backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+  border-radius:8px; border:1px solid rgba(255,255,255,.16);
+  padding:3px; overflow:hidden;
+}
+.theme-sl-pill{
+  position:absolute; top:3px;
+  height:calc(100% - 6px);
+  left:calc(var(--pill-x,0) * (25% - 1.5px) + 3px);
+  width:calc(25% - 1.5px);
+  border-radius:5px;
+  background:rgba(255,255,255,.22);
+  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  border:1px solid rgba(255,255,255,.35);
+  box-shadow:0 2px 10px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.28);
+  transition:left .26s cubic-bezier(.4,0,.2,1);
+  pointer-events:none; z-index:1;
+}
+.theme-sl-btn{
+  position:relative; z-index:2;
+  padding:.24rem .2rem; border:none; background:none;
+  /* --muted is always legible against --surf in every theme */
+  color:var(--muted);
+  font-family:'Barlow Condensed',sans-serif; font-size:.67rem; letter-spacing:.06em;
+  cursor:pointer; border-radius:4px;
+  transition:color .2s, font-weight .1s; white-space:nowrap; text-align:center;
+}
+.theme-sl-btn.on{
+  /* --text is always the highest-contrast label for each theme's surface */
+  color:var(--text);
+  font-weight:700;
+}
+/* Light themes — invert pill to dark-tinted glass */
+[data-theme="light"] .theme-sl-track,
+[data-theme="hc-light"] .theme-sl-track{
+  background:rgba(0,0,0,.06);
+  border-color:rgba(0,0,0,.16);
+}
+[data-theme="light"] .theme-sl-pill,
+[data-theme="hc-light"] .theme-sl-pill{
+  background:rgba(0,0,0,.12);
+  border-color:rgba(0,0,0,.22);
+  box-shadow:0 2px 8px rgba(0,0,0,.15), inset 0 1px 0 rgba(255,255,255,.55);
+}
 
 /* Hamburger */
 .ham{
@@ -1110,6 +1177,28 @@ button{ font-family:inherit; cursor:pointer; }
 .img-banner img {
   width: 100%; height: 100%; object-fit: cover; display: block;
 }
+
+/* ── Parallax banners ── */
+.parallax-banner img,
+.parallax-feature img {
+  height: 130%;
+  width: 100%;
+  object-fit: cover;
+  display: block;
+  position: absolute;
+  top: -15%;
+  left: 0;
+  will-change: transform;
+  transition: transform 0s linear;
+}
+.parallax-feature {
+  position: relative;
+  overflow: hidden;
+}
+.parallax-banner {
+  position: relative;
+  overflow: hidden;
+}
 .img-banner-overlay {
   position: absolute; inset: 0;
   background: linear-gradient(135deg, rgba(12,30,20,.72) 0%, rgba(12,30,20,.28) 100%);
@@ -1188,7 +1277,13 @@ button{ font-family:inherit; cursor:pointer; }
 @media(max-width:860px){
   .nav-desktop{ display:none; }
   .ham{ display:flex; }
-  .set-panel{ position:fixed; bottom:0; left:0; right:0; top:auto; width:100%; border-radius:16px 16px 0 0; max-height:82vh; overflow-y:auto; }
+  .set-panel{ position:fixed; bottom:0; left:0; right:0; top:auto; width:100%; border-radius:16px 16px 0 0; max-height:82vh; overflow-y:auto; transform-origin:bottom center; }
+  .set-panel.on{ animation:settingsPopMob .32s cubic-bezier(.34,1.56,.64,1) both; }
+  @keyframes settingsPopMob{
+    0%  { opacity:0; transform:scale(.96) translateY(24px); }
+    60% { opacity:1; transform:scale(1.01) translateY(-3px); }
+    100%{ opacity:1; transform:scale(1) translateY(0); }
+  }
   .about-grid{ grid-template-columns:1fr; gap:1.8rem; }
   .about-img-wrap{ aspect-ratio:16/9; order: -1; }
   .fb-grid{ grid-template-columns:1fr; }
@@ -1298,6 +1393,162 @@ button{ font-family:inherit; cursor:pointer; }
   .img-gallery-strip.cols-3,
   .img-gallery-strip.cols-4{ grid-template-columns:1fr; }
 }
+
+/* ── MOBILE OPTIMISATIONS ───────────────────────────────────────
+   Improves touch targets, spacing, readability, layout reflow
+   and interactive elements on small screens.
+─────────────────────────────────────────────────────────────── */
+
+/* ── 1. Core touch-target & font improvements (≤640px) ── */
+@media(max-width:640px){
+  /* 44px min touch targets on all interactive elements */
+  .btn-p,.btn-o,.btn-sm,
+  .mob-link,.fpill,.mpill,.ipill,.mc-btn,
+  .fb-btn,.fb-tool,.cs-link{ min-height:44px; min-width:44px; }
+
+  /* Slightly larger base font for legibility */
+  body{ font-size:16px; }
+
+  /* Cards full-width, no overflow */
+  .sp-card,.paper-card,.green-card{ width:100%; box-sizing:border-box; }
+
+  /* Prevent text overflow */
+  .qcard-desc,.sp-desc,.gc-p,.pc-p,.roe-i{ word-break:break-word; hyphens:auto; }
+
+  /* Stat numbers scale down */
+  .stat-num{ font-size:2rem; }
+
+  /* Chart band no extra padding on edges */
+  .chart-band{ padding:0 .25rem; }
+
+  /* Carbon calculator */
+  .calc-p{ padding:1.2rem 1rem; }
+  .ci-row{ grid-template-columns:1fr; gap:.55rem; }
+  .ci-add{ width:100%; text-align:center; }
+
+  /* Contact strip */
+  .contact-strip{ flex-direction:column; align-items:flex-start; padding:1.2rem 1rem; }
+  .cs-links{ flex-wrap:wrap; gap:.5rem; }
+
+  /* Map */
+  #lmap{ height:min(45vh,320px); }
+  .map-leg{ font-size:.58rem; padding:.4rem .6rem; }
+  .map-ctrls{ top:.4rem; right:.4rem; gap:.25rem; }
+  .mc-btn{ padding:.3rem .55rem; font-size:.62rem; }
+
+  /* Tooltip */
+  .sp-tip{ min-width:140px; font-size:.65rem; }
+
+  /* Hide decorative watermark text on small screens */
+  .event-card::before{ display:none; }
+
+  /* Magazine viewer */
+  .mag-wrap{ padding:1.25rem .75rem; min-height:340px; }
+  .fb-toolbar{ gap:.35rem; }
+  .fb-ctrls{ gap:.5rem; }
+  .fb-btn{ width:36px; height:36px; font-size:.9rem; }
+  .pg-ctr{ font-size:.75rem; min-width:70px; }
+  .th{ width:42px; height:54px; }
+
+  /* Comparison rows */
+  .comp-row{ grid-template-columns:60px 1fr 46px; gap:.3rem; }
+  .cr-lbl{ font-size:.65rem; }
+  .cr-unit{ font-size:.6rem; }
+
+  /* Metric pills */
+  .metric-pills{ gap:.35rem; }
+  .mpill{ padding:.3rem .65rem; font-size:.68rem; }
+
+  /* Species filter pills */
+  .filter-row{ gap:.3rem; }
+  .fpill{ padding:.28rem .6rem; font-size:.64rem; }
+
+  /* Admin overlays */
+  .adm-box{ padding:1.25rem 1rem; }
+  .pw-box{ padding:1.6rem 1.25rem; }
+
+  /* Feedback panels */
+  .fb-panel{ padding:1.25rem 1rem; }
+  .star{ font-size:1.35rem; }
+
+  /* Quick-nav cards */
+  .qcard{ padding:1rem .9rem; }
+  .qcard-ico{ font-size:1.35rem; }
+  .qcard-title{ font-size:.9rem; }
+  .qcard-desc{ font-size:.75rem; }
+
+  /* Footer */
+  .ft-bar{ font-size:.78rem; }
+
+  /* No horizontal scroll from oversized children */
+  .wrap,.wrap-sm,#hero{ overflow-x:hidden; }
+
+  /* Wordle keyboard */
+  .wl-kb-row{ gap:2px; }
+  .wl-key{
+    min-width:clamp(20px,6vw,30px);
+    height:clamp(32px,8.5vw,40px);
+    font-size:clamp(.65rem,2vw,.85rem);
+  }
+  .wl-key.wide{ min-width:clamp(36px,9.5vw,46px); }
+
+  /* Word-search */
+  .ws-cell{ width:22px; height:22px; font-size:.68rem; }
+
+  /* Crossword */
+  .cw-view-tbl td{ width:24px; height:24px; }
+
+  /* Donut chart */
+  .donut-w{ width:90px; height:90px; }
+  .d-lbl{ font-size:1.25rem; }
+
+  /* Stat / conservation cards */
+  .cc-val{ font-size:2.2rem; }
+
+  /* Phase & logistics */
+  .phase-s{ padding:1rem .9rem; }
+  .logi-card{ padding:1rem .9rem; }
+  .roe-block{ padding:1.1rem 1rem; }
+
+  /* Registration CTA */
+  .reg-cta{ flex-direction:column; gap:.65rem; }
+}
+
+/* ── 2. Extra tiny screens (≤360px) ── */
+@media(max-width:360px){
+  .hero-h{ font-size:clamp(2.8rem,21vw,4rem); }
+  .stat-num{ font-size:1.8rem; }
+  .qnav{ grid-template-columns:1fr; }
+  .cs-links{ gap:.4rem; }
+  .wl-key{ min-width:clamp(18px,5.5vw,28px); }
+  .ws-cell{ width:20px; height:20px; font-size:.6rem; }
+  .cw-view-tbl td{ width:22px; height:22px; }
+  .donut-w{ width:80px; height:80px; }
+  .d-lbl{ font-size:1.1rem; }
+  .cc-val{ font-size:2rem; }
+  .fb-btn{ width:32px; height:32px; }
+  .th{ width:38px; height:48px; }
+}
+
+/* ── 3. Short-landscape phones ── */
+@media(max-height:500px) and (orientation:landscape){
+  #hero{ min-height:auto; padding:4rem 1.2rem 2.5rem; }
+  .hero-h{ font-size:clamp(2.4rem,8vw,4rem); }
+  #lmap{ height:min(60vw,260px); }
+  .mag-wrap{ min-height:260px; }
+  #fb-vp{ max-height:52vh; }
+}
+
+/* ── 4. Accessibility: visible focus rings on mobile ── */
+@media(max-width:640px){
+  :focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  .btn-p:focus-visible,.btn-o:focus-visible{ outline-offset:3px; }
+}
+
+/* ── 5. Native tap highlight ── */
+@media(hover:none){
+  a,button,[role="button"]{ -webkit-tap-highlight-color:rgba(82,183,136,.18); }
+}
 </style>
 <!-- GAME STYLES injected -->
 <style>
@@ -1347,7 +1598,7 @@ button{ font-family:inherit; cursor:pointer; }
 [data-theme="hc-dark"] .game-page{background:#0a0a0a;border-color:rgba(0,255,130,.5);}
 [data-theme="hc-light"] .game-page{background:#f2f9f2;border-color:rgba(0,80,40,.5);}
 
-.gp-header{text-align:center;position:relative;}
+.gp-header{text-align:center;position:relative;padding-right:5.5rem;}
 .gp-type-badge{display:inline-block;padding:.18rem .65rem;border-radius:99px;background:var(--surf2);border:1px solid var(--border);font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-bottom:.4rem;}
 .gp-title{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.06em;color:var(--text);line-height:1.05;}
 
@@ -1364,10 +1615,12 @@ button{ font-family:inherit; cursor:pointer; }
 .cw-view-tbl input{width:100%;height:100%;border:none;background:transparent;text-align:center;font-family:'Bebas Neue',sans-serif;font-size:.85rem;color:#162c1e;text-transform:uppercase;outline:none;padding:0;cursor:pointer;}
 [data-theme="dark"] .cw-view-tbl input,[data-theme="hc-dark"] .cw-view-tbl input{color:#162c1e;}
 [data-theme="light"] .cw-view-tbl input,[data-theme="hc-light"] .cw-view-tbl input{color:#000;}
-.cw-view-tbl td.word-hl{background:rgba(82,183,136,.18)!important;}
-[data-theme="hc-dark"] .cw-view-tbl td.word-hl{background:rgba(0,255,130,.15)!important;}
-.cw-view-tbl td.focused{background:rgba(82,183,136,.42)!important;}
-[data-theme="hc-dark"] .cw-view-tbl td.focused{background:rgba(0,255,130,.3)!important;}
+.cw-view-tbl td.word-hl{background:rgba(82,183,136,.48)!important;}
+[data-theme="hc-dark"] .cw-view-tbl td.word-hl{background:rgba(0,255,130,.45)!important;}
+[data-theme="light"] .cw-view-tbl td.word-hl,[data-theme="hc-light"] .cw-view-tbl td.word-hl{background:rgba(52,168,110,.38)!important;}
+.cw-view-tbl td.focused{background:rgba(82,183,136,.75)!important;}
+[data-theme="hc-dark"] .cw-view-tbl td.focused{background:rgba(0,255,130,.65)!important;}
+[data-theme="light"] .cw-view-tbl td.focused,[data-theme="hc-light"] .cw-view-tbl td.focused{background:rgba(52,168,110,.65)!important;}
 .cw-view-tbl td.correct{background:rgba(82,183,136,.55)!important;}
 .cw-view-tbl td.wrong{background:rgba(220,60,60,.3)!important;}
 .gp-check-btn{display:flex;align-items:center;justify-content:center;gap:.5rem;padding:.55rem 1.1rem;border-radius:5px;background:var(--accent);color:var(--bg);border:none;font-family:'Barlow Condensed',sans-serif;font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:background .2s;width:100%;}
@@ -1600,11 +1853,14 @@ button{ font-family:inherit; cursor:pointer; }
       <div class="set-panel" id="sPanel">
         <div>
           <div class="s-head">Appearance</div>
-          <div class="theme-grid">
-            <button class="theme-btn on" onclick="setTheme('dark')">Dark</button>
-            <button class="theme-btn" onclick="setTheme('light')">Light</button>
-            <button class="theme-btn" onclick="setTheme('hc-dark')">HC Dark</button>
-            <button class="theme-btn" onclick="setTheme('hc-light')">HC Light</button>
+          <div class="theme-sl-wrap">
+            <div class="theme-sl-track" id="themeSlTrack">
+              <div class="theme-sl-pill" id="themeSlPill"></div>
+              <button class="theme-sl-btn on" data-theme="dark"     onclick="setThemeSlide(this,'dark')">Dark</button>
+              <button class="theme-sl-btn"    data-theme="light"    onclick="setThemeSlide(this,'light')">Light</button>
+              <button class="theme-sl-btn"    data-theme="hc-dark"  onclick="setThemeSlide(this,'hc-dark')">HC Dark</button>
+              <button class="theme-sl-btn"    data-theme="hc-light" onclick="setThemeSlide(this,'hc-light')">HC Light</button>
+            </div>
           </div>
         </div>
         <div>
@@ -1652,6 +1908,10 @@ button{ font-family:inherit; cursor:pointer; }
             <span class="s-lbl">Mangrove Soundscape</span>
             <button class="tog" id="ambTog" onclick="toggleAudio()"></button>
           </div>
+          <div class="s-row" style="margin-top:.3rem;">
+            <span class="s-lbl">Music</span>
+            <button class="tog" id="musicTog" onclick="toggleMusic()"></button>
+          </div>
         </div>
       </div>
     </div>
@@ -1694,6 +1954,10 @@ button{ font-family:inherit; cursor:pointer; }
     <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.5rem;">
       <span class="s-lbl">Ambient Audio</span>
       <button class="tog" id="ambTogMob" onclick="toggleAudio()"></button>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.4rem;">
+      <span class="s-lbl">Music</span>
+      <button class="tog" id="musicTogMob" onclick="toggleMusic()"></button>
     </div>
   </div>
 </div>
@@ -1954,8 +2218,8 @@ button{ font-family:inherit; cursor:pointer; }
     <!-- Info cards -->
     <div style="margin-top:2.5rem;">
       <!-- SINGLE PHOTO FEATURE -->
-      <div class="reveal" style="border-radius:10px;overflow:hidden;aspect-ratio:21/9;margin-bottom:2rem;border:1px solid var(--border);box-shadow:var(--shadow);position:relative;">
-        <img src="https://www2.cifor.org/asia-pacific-rainforest-summit-2018/wp-content/uploads/sites/34/2018/04/aprs-205-IMG_3865.JPG" alt="Mangrove conservation research fieldwork" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;">
+      <div class="reveal parallax-feature" style="border-radius:10px;overflow:hidden;aspect-ratio:21/9;margin-bottom:2rem;border:1px solid var(--border);box-shadow:var(--shadow);position:relative;">
+        <img src="https://www2.cifor.org/asia-pacific-rainforest-summit-2018/wp-content/uploads/sites/34/2018/04/aprs-205-IMG_3865.JPG" alt="Mangrove conservation research fieldwork" loading="lazy">
         <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(6,16,9,.65) 0%,transparent 55%);display:flex;flex-direction:column;justify-content:flex-end;padding:1.25rem 1.5rem;">
           <div style="font-family:'Barlow Condensed',sans-serif;font-size:.62rem;letter-spacing:.3em;text-transform:uppercase;color:var(--accent);margin-bottom:.3rem;display:flex;align-items:center;gap:.5rem;"><span style="display:block;width:18px;height:1px;background:var(--accent);"></span>Field Research</div>
           <div style="font-family:'DM Serif Display',serif;font-size:clamp(.95rem,2vw,1.3rem);color:#f2eedf;font-style:italic;line-height:1.4;max-width:540px;">Researchers document the ecological cost of urbanisation on mangrove habitats across Asia-Pacific.</div>
@@ -2040,7 +2304,7 @@ button{ font-family:inherit; cursor:pointer; }
     </div>
   </div>
 
-  <div class="img-banner reveal" style="margin-top:0;">
+  <div class="img-banner parallax-banner reveal" style="margin-top:0;">
     <img src="https://wallpapercave.com/wp/wp14348261.jpg" alt="Mangrove forest aerial view" loading="lazy">
     <div class="img-banner-overlay">
       <div class="img-banner-label">Biodiversity</div>
@@ -2164,7 +2428,7 @@ button{ font-family:inherit; cursor:pointer; }
 ══════════════════════════════════════════ -->
 <div class="page" id="pcontact">
   <!-- Contact header image -->
-  <div class="img-banner" style="height:clamp(140px,22vw,280px);">
+  <div class="img-banner parallax-banner" style="height:clamp(140px,22vw,280px);">
     <img src="https://static.vecteezy.com/system/resources/previews/072/598/630/large_2x/mangrove-forest-with-root-system-over-clear-water-in-tropical-coastal-environment-photo.jpg" alt="Mangrove roots over clear water" loading="lazy">
     <div class="img-banner-overlay">
       <div class="img-banner-label">MangroveWatch</div>
@@ -2626,6 +2890,40 @@ function setTheme(t){
   localStorage.setItem('mw26_theme',t);
   document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('on'));
   document.querySelectorAll(`.theme-btn`).forEach(b=>{if(b.textContent.toLowerCase().replace(' ','-')===t||b.onclick?.toString().includes(`'${t}'`))b.classList.add('on');});
+  // Sync slider pill
+  const track=document.getElementById('themeSlTrack');
+  if(track){
+    const btns=Array.from(track.querySelectorAll('.theme-sl-btn'));
+    btns.forEach(b=>b.classList.remove('on'));
+    const match=btns.find(b=>b.dataset.theme===t);
+    if(match){match.classList.add('on');track.style.setProperty('--pill-x',btns.indexOf(match));}
+  }
+}
+function setThemeSlide(btn,theme){
+  setTheme(theme);
+}
+/* ── Music Player (bh.mp3 → ss.mp3 → loop) ── */
+let musicOn=false,musicTrack=0;
+const musicFiles=['bh.mp3','ss.mp3'];
+let musicAudio=null;
+function toggleMusic(){
+  musicOn=!musicOn;
+  ['musicTog','musicTogMob'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.toggle('on',musicOn);});
+  if(musicOn){
+    if(!musicAudio){
+      musicAudio=new Audio();
+      musicAudio.addEventListener('ended',()=>{
+        if(!musicOn)return;
+        musicTrack=(musicTrack+1)%musicFiles.length;
+        musicAudio.src=musicFiles[musicTrack];
+        musicAudio.play().catch(()=>{});
+      });
+    }
+    musicAudio.src=musicFiles[musicTrack];
+    musicAudio.play().catch(()=>{});
+  }else{
+    if(musicAudio){musicAudio.pause();musicAudio.currentTime=0;}
+  }
 }
 function setFZ(v){document.documentElement.setAttribute('data-fz',v);localStorage.setItem('mw26_fz',v);}
 function setLang(v){document.documentElement.lang=v;localStorage.setItem('mw26_lang',v);}
@@ -2971,16 +3269,25 @@ function calcCarbon(){
 }
 
 /* ══════════════════════════════════════════
-   AMBIENT SOUNDSCAPE 2.0 — Three-layer spatial audio
-   Layer 1: Deep forest hum   (low rumble, centred)
-   Layer 2: Water lapping     (mid-freq, panned left)
-   Layer 3: Bird calls        (random intervals, panning wide)
+   AMBIENT SOUNDSCAPE 3.0 — Dense Mangrove Symphony
+   ──────────────────────────────────────────
+   Layer 1 : Sub-bass forest breath     (infra-low rumble, centre)
+   Layer 2 : Water lapping on roots     (wide stereo, rhythmic surge)
+   Layer 3 : Root rustling              (broadband organic texture)
+   Layer 4 : Cricket chorus             (high shimmer, left-right pulse)
+   Layer 5 : Pistol / mud shrimp pops   (stochastic transients, spatial)
+   Layer 6 : Exotic bird calls A-E      (5 species, FM + harmonic)
+   Layer 7 : Rhythmic burst birds       (structured repeat songs)
 ══════════════════════════════════════════ */
 let audioCtx=null,ambOn=false;
-let masterGain=null;            // overall on/off
-let forestSrc=null,waterSrc=null,birdTimer=null;
+let masterGain=null;
+let birdTimer=null,shrimpTimer=null,rhythmicBirdTimer=null;
 
-/* ── Utility: pink-noise buffer ── */
+/* ──────────────────────────────────────────
+   UTILITIES
+────────────────────────────────────────── */
+
+/* Pink-noise buffer — organic foundation for every noise layer */
 function makePinkNoise(ctx,seconds){
   const sr=ctx.sampleRate,len=Math.floor(sr*seconds);
   const buf=ctx.createBuffer(1,len,sr);
@@ -2995,119 +3302,641 @@ function makePinkNoise(ctx,seconds){
   return buf;
 }
 
-/* ── Utility: simple sine-wave buffer ── */
-function makeSineBuffer(ctx,freq,seconds){
+/* Brown-noise buffer — deeper, softer rumble */
+function makeBrownNoise(ctx,seconds){
   const sr=ctx.sampleRate,len=Math.floor(sr*seconds);
   const buf=ctx.createBuffer(1,len,sr);
   const d=buf.getChannelData(0);
-  for(let i=0;i<len;i++) d[i]=Math.sin(2*Math.PI*freq*i/sr);
+  let last=0;
+  for(let i=0;i<len;i++){
+    const w=(Math.random()*2-1)*0.02;
+    last=Math.max(-1,Math.min(1,last+w));
+    d[i]=last*3.5;
+  }
   return buf;
 }
 
-/* ── Utility: build a PannerNode at (x,0,0) ── */
-function makePanner(ctx,x){
+/* Stereo panner, clamped to [-1,1] */
+function makePan(ctx,x){
   if(ctx.createStereoPanner){
     const p=ctx.createStereoPanner();
-    p.pan.value=Math.max(-1,Math.min(1,x/3));
+    p.pan.value=Math.max(-1,Math.min(1,x));
     return p;
   }
   const p=ctx.createPanner();
   p.panningModel='HRTF';p.distanceModel='inverse';
-  p.setPosition(x,0,0);
+  p.setPosition(x*3,0,0);
   return p;
 }
 
-/* ── Layer 1: Deep forest hum (centred, very low) ── */
-function startForest(ctx){
-  const buf=makePinkNoise(ctx,4);
+/* Randomised stereo panner */
+function randPan(ctx){return makePan(ctx,(Math.random()*2-1));}
+
+/* Simple envelope on a gain node */
+function applyEnv(g,t,atk,hold,rel,peak){
+  g.gain.setValueAtTime(0,t);
+  g.gain.linearRampToValueAtTime(peak,t+atk);
+  g.gain.setValueAtTime(peak,t+atk+hold);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+atk+hold+rel);
+}
+
+/* ──────────────────────────────────────────
+   LAYER 1 — Sub-bass forest breath
+   Brown-noise through a very low bandpass, slow LFO swell
+────────────────────────────────────────── */
+function startForestBreath(ctx){
+  const buf=makeBrownNoise(ctx,6);
   const src=ctx.createBufferSource();src.buffer=buf;src.loop=true;
-  const lp=ctx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=200;lp.Q.value=0.6;
-  const hp=ctx.createBiquadFilter();hp.type='highpass';hp.frequency.value=40;
-  const g=ctx.createGain();g.gain.value=0.055;
-  const pan=makePanner(ctx,0);   // dead centre
+
+  const lp =ctx.createBiquadFilter();lp.type ='lowpass'; lp.frequency.value=140;lp.Q.value=0.5;
+  const hp =ctx.createBiquadFilter();hp.type ='highpass';hp.frequency.value=28;
+
+  const g=ctx.createGain();g.gain.value=0.07;
+
+  /* Slow breath LFO ~0.07 Hz */
+  const lfo=ctx.createOscillator();lfo.frequency.value=0.07;
+  const lfoG=ctx.createGain();lfoG.gain.value=0.03;
+  lfo.connect(lfoG);lfoG.connect(g.gain);lfo.start();
+
+  const pan=makePan(ctx,0);
   src.connect(lp);lp.connect(hp);hp.connect(g);g.connect(pan);pan.connect(masterGain);
   src.start();
-  return src;
+  return [src,lfo];
 }
 
-/* ── Layer 2: Water lapping (mid, panned left) ── */
-function startWater(ctx){
-  // Blend two pink-noise bufs at different lengths for organic variation
-  const buf1=makePinkNoise(ctx,3.7),buf2=makePinkNoise(ctx,5.1);
-  const src1=ctx.createBufferSource();src1.buffer=buf1;src1.loop=true;
-  const src2=ctx.createBufferSource();src2.buffer=buf2;src2.loop=true;
-  const bp=ctx.createBiquadFilter();bp.type='bandpass';bp.frequency.value=520;bp.Q.value=0.9;
-  const lp=ctx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=900;
-  const g=ctx.createGain();g.gain.value=0.075;
-  // Slow LFO to mimic wave rhythm ~0.15 Hz
-  const lfo=ctx.createOscillator();lfo.frequency.value=0.15;
-  const lfoGain=ctx.createGain();lfoGain.gain.value=0.045;
-  lfo.connect(lfoGain);lfoGain.connect(g.gain);lfo.start();
-  const pan=makePanner(ctx,-2.2);  // left of centre
-  src1.connect(bp);src2.connect(bp);bp.connect(lp);lp.connect(g);g.connect(pan);pan.connect(masterGain);
-  src1.start();src2.start(ctx.currentTime+1.2);
-  return [src1,src2,lfo];
+/* ──────────────────────────────────────────
+   LAYER 2 — Water lapping on mangrove roots
+   Three overlapping noise streams at staggered rhythms,
+   each shaped by an independent slow LFO to create the
+   organic surge-and-retreat of tidal water around prop roots.
+────────────────────────────────────────── */
+function startWaterOnRoots(ctx){
+  /* Three noise bufs of different lengths — ensures the loop
+     never repeats obviously */
+  const bufs=[makePinkNoise(ctx,4.1),makePinkNoise(ctx,5.7),makePinkNoise(ctx,7.3)];
+  const lfoFreqs=[0.18,0.13,0.22];  // slightly different wave rates
+  const panPositions=[-0.55,-0.15,0.40]; // spread across stereo field
+
+  bufs.forEach((buf,i)=>{
+    const src=ctx.createBufferSource();src.buffer=buf;src.loop=true;
+
+    /* Bandpass centred in the 'water splosh' register */
+    const bp=ctx.createBiquadFilter();bp.type='bandpass';
+    bp.frequency.value=480+i*90;bp.Q.value=0.7;
+
+    /* Gentle high-shelf adds crisp surface texture */
+    const hs=ctx.createBiquadFilter();hs.type='highshelf';
+    hs.frequency.value=2200;hs.gain.value=4;
+
+    const g=ctx.createGain();g.gain.value=0.055;
+
+    /* Tidal LFO — each stream breathes at its own rate */
+    const lfo=ctx.createOscillator();lfo.type='sine';
+    lfo.frequency.value=lfoFreqs[i];
+    const lfoG=ctx.createGain();lfoG.gain.value=0.04;
+    lfo.connect(lfoG);lfoG.connect(g.gain);lfo.start();
+
+    /* Secondary ripple LFO for surface chop */
+    const lfo2=ctx.createOscillator();lfo2.type='sine';
+    lfo2.frequency.value=lfoFreqs[i]*3.7;
+    const lfo2G=ctx.createGain();lfo2G.gain.value=0.012;
+    lfo2.connect(lfo2G);lfo2G.connect(g.gain);lfo2.start();
+
+    const pan=makePan(ctx,panPositions[i]);
+    src.connect(bp);bp.connect(hs);hs.connect(g);g.connect(pan);pan.connect(masterGain);
+    src.start(ctx.currentTime+i*1.3);
+  });
 }
 
-/* ── Layer 3: Bird calls — FM synthesis, sounds like real birds ── */
-function chirpBird(ctx,pan){
+/* Occasional single sharp water-slap transient for variety */
+function waterSlap(ctx){
   const now=ctx.currentTime;
-  // Each species call = 2-4 syllables with FM modulation
-  const syllables=2+Math.floor(Math.random()*3);
-  const gap=0.09+Math.random()*0.07;
-  const species=Math.floor(Math.random()*3); // 3 bird "types"
+  const buf=makePinkNoise(ctx,0.35);
+  const src=ctx.createBufferSource();src.buffer=buf;
 
-  for(let s=0;s<syllables;s++){
-    const t=now+s*gap;
-    const dur=0.06+Math.random()*0.08;
+  const bp=ctx.createBiquadFilter();bp.type='bandpass';bp.frequency.value=700+Math.random()*400;bp.Q.value=1.4;
+  const lp=ctx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=1800;
 
-    // Carrier oscillator (the "pitch" of the chirp)
-    const carrier=ctx.createOscillator();
-    carrier.type='sine';
-    const baseF=species===0?(2800+Math.random()*600)  // warbler-type: high
-               :species===1?(1600+Math.random()*400)  // robin-type: mid
-               :(3200+Math.random()*800);              // high-pitched
+  const g=ctx.createGain();
+  applyEnv(g,now,0.003,0.02,0.28,0.16+Math.random()*0.08);
 
-    // Frequency sweep: birds typically slide up or down on each syllable
-    const sweepDir=Math.random()>0.5?1:-1;
-    carrier.frequency.setValueAtTime(baseF,t);
-    carrier.frequency.linearRampToValueAtTime(baseF+sweepDir*(200+Math.random()*300),t+dur*0.7);
-    carrier.frequency.linearRampToValueAtTime(baseF+sweepDir*80,t+dur);
+  const pan=makePan(ctx,(Math.random()*2-1)*0.7);
+  src.connect(bp);bp.connect(lp);lp.connect(g);g.connect(pan);pan.connect(masterGain);
+  src.start(now);src.stop(now+0.4);
+}
 
-    // Modulator — creates the natural "warble" texture
-    const mod=ctx.createOscillator();
-    mod.type='sine';
-    mod.frequency.value=baseF*(species===0?2.02:species===1?1.5:3.01); // harmonic ratio
-    const modGain=ctx.createGain();
-    modGain.gain.value=baseF*0.28; // modulation index
-    mod.connect(modGain);modGain.connect(carrier.frequency);
+/* ──────────────────────────────────────────
+   LAYER 3 — Root & wood creak
+   Brown noise shaped to the low-mid woody register (80–700 Hz).
+   Two streams: deep slow root settling, lighter leaf-brush.
+   Kept soft and slow so it blends behind the water layer.
+────────────────────────────────────────── */
+function startRootRustle(ctx){
+  /* Stream A — deep woody creak: brown noise 80–500 Hz */
+  (()=>{
+    const buf=makeBrownNoise(ctx,8.3);
+    const src=ctx.createBufferSource();src.buffer=buf;src.loop=true;
+    const hp=ctx.createBiquadFilter();hp.type='highpass';hp.frequency.value=80;
+    const lp=ctx.createBiquadFilter();lp.type='lowpass'; lp.frequency.value=500;
+    /* Resonant woody bump ~180 Hz */
+    const pk=ctx.createBiquadFilter();pk.type='peaking';
+    pk.frequency.value=180;pk.gain.value=6;pk.Q.value=1.5;
+    const g=ctx.createGain();g.gain.value=0.038;
+    /* Very slow LFO — roots settle, not rustle constantly */
+    const lfo=ctx.createOscillator();lfo.type='sine';
+    lfo.frequency.value=0.028+Math.random()*0.015;
+    const lfoG=ctx.createGain();lfoG.gain.value=0.022;
+    lfo.connect(lfoG);lfoG.connect(g.gain);lfo.start();
+    const pan=makePan(ctx,-0.35);
+    src.connect(hp);hp.connect(lp);lp.connect(pk);pk.connect(g);g.connect(pan);pan.connect(masterGain);
+    src.start();
+  })();
 
-    // Amplitude envelope: fast attack, natural decay
-    const env=ctx.createGain();
-    env.gain.setValueAtTime(0,t);
-    env.gain.linearRampToValueAtTime(0.22,t+0.010);   // 10ms attack
-    env.gain.setValueAtTime(0.22,t+dur*0.45);
-    env.gain.exponentialRampToValueAtTime(0.001,t+dur);
+  /* Stream B — dry leaf / fine root brush: pink noise 350–1200 Hz */
+  (()=>{
+    const buf=makePinkNoise(ctx,6.7);
+    const src=ctx.createBufferSource();src.buffer=buf;src.loop=true;
+    const hp=ctx.createBiquadFilter();hp.type='highpass';hp.frequency.value=350;
+    const lp=ctx.createBiquadFilter();lp.type='lowpass'; lp.frequency.value=1200;
+    /* Slight dip at 900 Hz so it doesn't poke out harshly */
+    const notch=ctx.createBiquadFilter();notch.type='peaking';
+    notch.frequency.value=900;notch.gain.value=-5;notch.Q.value=2;
+    const g=ctx.createGain();g.gain.value=0.020;
+    const lfo=ctx.createOscillator();lfo.type='sine';
+    lfo.frequency.value=0.055+Math.random()*0.03;
+    const lfoG=ctx.createGain();lfoG.gain.value=0.012;
+    lfo.connect(lfoG);lfoG.connect(g.gain);lfo.start();
+    const pan=makePan(ctx,0.45);
+    src.connect(hp);hp.connect(lp);lp.connect(notch);notch.connect(g);g.connect(pan);pan.connect(masterGain);
+    src.start(ctx.currentTime+1.4);
+  })();
+}
 
-    carrier.connect(env);env.connect(pan);
-    carrier.start(t);carrier.stop(t+dur+0.01);
-    mod.start(t);mod.stop(t+dur+0.01);
+/* ──────────────────────────────────────────
+   LAYER 4 — Cricket chorus
+   Multiple pairs of narrow-band oscillators slightly
+   detuned to create that living, shimmering insect wall.
+   Each "cricket" pulses at ~15-22 Hz (chirp rate) via an
+   amplitude-modulation LFO.
+────────────────────────────────────────── */
+function startCrickets(ctx){
+  /* 6 "cricket voices" spread across the canopy */
+  const voices=[
+    {f:4300,pan:-0.82,rate:17,vol:0.028},
+    {f:4420,pan:-0.38,rate:19,vol:0.032},
+    {f:4510,pan: 0.10,rate:16,vol:0.026},
+    {f:4390,pan: 0.55,rate:21,vol:0.030},
+    {f:4250,pan: 0.80,rate:18,vol:0.025},
+    {f:4600,pan:-0.60,rate:20,vol:0.022},
+  ];
+
+  voices.forEach(({f,pan:px,rate,vol})=>{
+    /* Carrier: narrow sine */
+    const osc=ctx.createOscillator();
+    osc.type='sine';
+    /* Very slight detune so each cricket is unique */
+    osc.frequency.value=f+Math.random()*60-30;
+
+    /* Thin bandpass to tighten the timbre */
+    const bp=ctx.createBiquadFilter();bp.type='bandpass';
+    bp.frequency.value=f;bp.Q.value=12;
+
+    /* Amplitude modulator — the actual chirp pulse */
+    const lfoOsc=ctx.createOscillator();
+    lfoOsc.type='square';
+    lfoOsc.frequency.value=rate+Math.random()*2;
+    const lfoSoft=ctx.createBiquadFilter();lfoSoft.type='lowpass';lfoSoft.frequency.value=rate*2;
+    const lfoG=ctx.createGain();lfoG.gain.value=vol*0.5;
+    lfoOsc.connect(lfoSoft);lfoSoft.connect(lfoG);
+
+    const g=ctx.createGain();g.gain.value=vol;
+    lfoG.connect(g.gain);
+
+    /* Slow wander LFO so the chorus breathes in and out */
+    const wanderLfo=ctx.createOscillator();
+    wanderLfo.frequency.value=0.04+Math.random()*0.03;
+    const wanderG=ctx.createGain();wanderG.gain.value=vol*0.55;
+    wanderLfo.connect(wanderG);wanderG.connect(g.gain);
+    wanderLfo.start();
+
+    const pan=makePan(ctx,px);
+    osc.connect(bp);bp.connect(g);g.connect(pan);pan.connect(masterGain);
+    osc.start();lfoOsc.start();
+  });
+}
+
+/* ──────────────────────────────────────────
+   LAYER 5 — Pistol / mud-burrowing shrimp pops
+   Each pop = a sharp broadband noise burst through a
+   resonant filter, mimicking the cavitation bubble of a
+   pistol shrimp — one of the loudest sounds in a mangrove.
+   Followed by a low resonant 'boing' tail.
+────────────────────────────────────────── */
+function fireShrimp(ctx){
+  const now=ctx.currentTime;
+  const px=Math.random()*2-1; // random spatial position
+
+  /* ── Pop transient: white noise through resonant bandpass ── */
+  const noiseBuf=makePinkNoise(ctx,0.08);
+  const nSrc=ctx.createBufferSource();nSrc.buffer=noiseBuf;
+
+  const resBP=ctx.createBiquadFilter();
+  resBP.type='bandpass';
+  resBP.frequency.value=800+Math.random()*600;
+  resBP.Q.value=3+Math.random()*3;
+
+  const nGain=ctx.createGain();
+  /* Very fast attack (1ms), then sharp cut */
+  nGain.gain.setValueAtTime(0,now);
+  nGain.gain.linearRampToValueAtTime(0.55+Math.random()*0.25,now+0.001);
+  nGain.gain.exponentialRampToValueAtTime(0.0001,now+0.055);
+
+  /* ── Low resonant 'body' thump ── */
+  const thump=ctx.createOscillator();
+  thump.type='sine';
+  const thumpFreq=120+Math.random()*80;
+  thump.frequency.setValueAtTime(thumpFreq*2.2,now);
+  thump.frequency.exponentialRampToValueAtTime(thumpFreq*0.5,now+0.12);
+
+  const tGain=ctx.createGain();
+  tGain.gain.setValueAtTime(0,now);
+  tGain.gain.linearRampToValueAtTime(0.18,now+0.002);
+  tGain.gain.exponentialRampToValueAtTime(0.0001,now+0.18);
+
+  /* ── Overtone harmonic snap ── */
+  const snap=ctx.createOscillator();
+  snap.type='sine';
+  snap.frequency.setValueAtTime(thumpFreq*4.5,now);
+  snap.frequency.exponentialRampToValueAtTime(thumpFreq*1.2,now+0.06);
+
+  const sGain=ctx.createGain();
+  sGain.gain.setValueAtTime(0,now);
+  sGain.gain.linearRampToValueAtTime(0.09,now+0.001);
+  sGain.gain.exponentialRampToValueAtTime(0.0001,now+0.07);
+
+  const pan=makePan(ctx,px);
+  nSrc.connect(resBP);resBP.connect(nGain);nGain.connect(pan);
+  thump.connect(tGain);tGain.connect(pan);
+  snap.connect(sGain);sGain.connect(pan);
+  pan.connect(masterGain);
+
+  nSrc.start(now);nSrc.stop(now+0.1);
+  thump.start(now);thump.stop(now+0.25);
+  snap.start(now);snap.stop(now+0.1);
+
+  /* Occasional double-pop (fast second pop ~40ms later) */
+  if(Math.random()<0.35){
+    const t2=now+0.04+Math.random()*0.03;
+    const nb2=makePinkNoise(ctx,0.05);
+    const ns2=ctx.createBufferSource();ns2.buffer=nb2;
+    const bp2=ctx.createBiquadFilter();bp2.type='bandpass';
+    bp2.frequency.value=1000+Math.random()*500;bp2.Q.value=4;
+    const ng2=ctx.createGain();
+    ng2.gain.setValueAtTime(0,t2);
+    ng2.gain.linearRampToValueAtTime(0.28,t2+0.001);
+    ng2.gain.exponentialRampToValueAtTime(0.0001,t2+0.04);
+    const pan2=makePan(ctx,px+((Math.random()-0.5)*0.15));
+    ns2.connect(bp2);bp2.connect(ng2);ng2.connect(pan2);pan2.connect(masterGain);
+    ns2.start(t2);ns2.stop(t2+0.06);
   }
+}
+
+function scheduleShrimpPops(ctx){
+  if(!ambOn)return;
+  /* Low tide = lots of pops: 300–1500ms between events */
+  const delay=300+Math.random()*1200;
+  shrimpTimer=setTimeout(()=>{
+    if(!ambOn||!audioCtx)return;
+    /* Fire 1-3 pops in a burst (shrimp colonies) */
+    const burst=Math.random()<0.25?3:Math.random()<0.5?2:1;
+    for(let b=0;b<burst;b++){
+      setTimeout(()=>{ if(ambOn&&audioCtx) fireShrimp(audioCtx); }, b*55+Math.random()*30);
+    }
+    scheduleShrimpPops(ctx);
+  },delay);
+}
+
+/* ──────────────────────────────────────────
+   LAYER 6 — Exotic bird calls (5 species)
+   Species A — Kingfisher: rapid descending trill
+   Species B — Sunbird: complex rising warble
+   Species C — Heron: low, slow, hollow call
+   Species D — Bulbul: cheerful 3-note phrase
+   Species E — Mangrove whistler: long pure whistle with vibrato
+────────────────────────────────────────── */
+
+/* ──────────────────────────────────────────────────────────────
+   BIRD SYNTHESIS ENGINE — organic, non-electronic calls
+   ──────────────────────────────────────────────────────────────
+   Why birds sound like birds (not beeps):
+   1. HARMONICS  — a sawtooth carrier is rich in overtones.
+                   A pure sine has none, hence it sounds like a beep.
+   2. FORMANT     — a bird's throat/beak acts as a resonating cavity.
+                   We model this with a peaking bandpass filter that
+                   emphasises one frequency band, like a vowel formant.
+   3. BREATH NOISE — every real bird call has a small airy component
+                   from the syrinx. A pink-noise source mixed at ~5%
+                   breaks the perfectly-clean electronic quality.
+   4. FREQUENCY   — kept well below 3 kHz for all calls. Above that,
+                   pure tones genuinely do sound like test beeps.
+────────────────────────────────────────────────────────────── */
+
+/* Core syllable builder — sawtooth + formant + breath noise */
+function birdSyllable(ctx, dest, t, baseF, sweepEnd, dur, peakVol, atk, formantQ){
+  atk = atk || 0.012;
+  formantQ = formantQ || 8;
+
+  /* ── 1. Sawtooth carrier — full harmonic series ── */
+  const carrier = ctx.createOscillator();
+  carrier.type = 'sawtooth';
+  carrier.frequency.setValueAtTime(baseF, t);
+  if(sweepEnd) carrier.frequency.linearRampToValueAtTime(sweepEnd, t + dur * 0.78);
+  /* Slight return at the very end (natural pitch fall-off) */
+  if(sweepEnd) carrier.frequency.linearRampToValueAtTime(sweepEnd * 0.96, t + dur);
+
+  /* ── 2. Formant filter — shapes raw sawtooth into bird-like timbre ── */
+  const formant = ctx.createBiquadFilter();
+  formant.type = 'bandpass';
+  formant.frequency.value = baseF * 1.4;  /* formant slightly above fundamental */
+  formant.Q.value = formantQ;
+
+  /* Soft lowpass after formant — removes harsh sawtooth aliasing */
+  const soft = ctx.createBiquadFilter();
+  soft.type = 'lowpass';
+  soft.frequency.value = Math.min(baseF * 5, 6000);
+  soft.Q.value = 0.5;
+
+  /* ── 3. Breath noise — airy syrinx component ── */
+  const noiseBuf = makePinkNoise(ctx, dur + 0.05);
+  const nSrc = ctx.createBufferSource(); nSrc.buffer = noiseBuf;
+  const noiseHP = ctx.createBiquadFilter(); noiseHP.type = 'highpass';
+  noiseHP.frequency.value = baseF * 0.6;
+  const noiseLPF = ctx.createBiquadFilter(); noiseLPF.type = 'lowpass';
+  noiseLPF.frequency.value = baseF * 2.2;
+  const noiseGain = ctx.createGain(); noiseGain.gain.value = peakVol * 0.07;
+
+  /* ── 4. Amplitude envelope ── */
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(0, t);
+  env.gain.linearRampToValueAtTime(peakVol, t + atk);
+  env.gain.setValueAtTime(peakVol, t + dur * 0.38);
+  env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+
+  /* ── Wire it up ── */
+  carrier.connect(formant); formant.connect(soft); soft.connect(env); env.connect(dest);
+  nSrc.connect(noiseHP); noiseHP.connect(noiseLPF); noiseLPF.connect(noiseGain); noiseGain.connect(dest);
+
+  carrier.start(t); carrier.stop(t + dur + 0.04);
+  nSrc.start(t);    nSrc.stop(t + dur + 0.04);
+}
+
+/* Thin vibrato layer added on top of a long note (whistler, heron) */
+function addVibrato(carrier, baseF, rate, depth, startT){
+  const vib = carrier.context.createOscillator();
+  vib.frequency.value = rate;
+  const vibG = carrier.context.createGain();
+  vibG.gain.value = baseF * depth;
+  vib.connect(vibG); vibG.connect(carrier.frequency);
+  vib.start(startT + 0.12);  /* vibrato kicks in after attack settles */
+  vib.stop(startT + 3.0);
+}
+
+/* ─── Species A — Collared Kingfisher: sharp staccato descending trill ───
+   Real call: ti-ti-ti-ti-ti-ti dropping in pitch. Frequencies: 1600–2200 Hz.
+   Fast notes, dry, no sustain. */
+function birdKingfisher(ctx, pan){
+  const now = ctx.currentTime;
+  const notes = 6 + Math.floor(Math.random() * 5);
+  const startF = 1900 + Math.random() * 300;
+  const stepDown = 45 + Math.random() * 35;
+  for(let i = 0; i < notes; i++){
+    const t = now + i * 0.072;
+    const f = startF - i * stepDown;
+    birdSyllable(ctx, pan, t, f, f - 70, 0.058, 0.22, 0.007, 10);
+  }
+}
+
+/* ─── Species B — Olive-backed Sunbird: liquid ascending warble ───
+   Real call: sweet rising phrases, 1400–2600 Hz. Each phrase ends with a
+   fast trill. Multiple phrases in sequence. */
+function birdSunbird(ctx, pan){
+  const now = ctx.currentTime;
+  const phrases = 2 + Math.floor(Math.random() * 3);
+  for(let ph = 0; ph < phrases; ph++){
+    const tPh = now + ph * 0.32;
+    const rootF = 1500 + Math.random() * 500;
+    /* Rising 4-note phrase */
+    for(let s = 0; s < 4; s++){
+      const t = tPh + s * 0.072;
+      const f = rootF + s * 130;
+      birdSyllable(ctx, pan, t, f, f + 160, 0.085, 0.20, 0.010, 7);
+    }
+    /* Fast trill ending — alternates between two close pitches */
+    const trillF = rootF + 520;
+    for(let tr = 0; tr < 5; tr++){
+      const t = tPh + 4 * 0.072 + tr * 0.040;
+      const f = trillF + (tr % 2 === 0 ? 0 : -90);
+      birdSyllable(ctx, pan, t, f, f + 40, 0.038, 0.15, 0.006, 6);
+    }
+  }
+}
+
+/* ─── Species C — Purple Heron: deep, hollow, guttural call ───
+   Real call: a low drawn-out "fraank". 300–500 Hz, long duration, raspy.
+   High formantQ gives it the hollow resonant quality. */
+function birdHeron(ctx, pan){
+  const now = ctx.currentTime;
+  const calls = 1 + Math.floor(Math.random() * 2);
+  for(let c = 0; c < calls; c++){
+    const t = now + c * 1.5;
+    const f = 330 + Math.random() * 90;
+    /* Main call — long, falls in pitch */
+    birdSyllable(ctx, pan, t, f, f * 0.68, 1.0, 0.26, 0.045, 4);
+    /* Raspy overtone layer — second harmonic, quieter */
+    birdSyllable(ctx, pan, t + 0.06, f * 1.95, f * 1.3, 0.75, 0.09, 0.07, 3);
+  }
+}
+
+/* ─── Species D — Yellow-vented Bulbul: bright cheerful 3-note phrase ───
+   Real call: "wit-tiu-wit", 1200–2200 Hz. Bouncy and melodic.
+   Notes are well-separated with clear gaps. */
+function birdBulbul(ctx, pan){
+  const now = ctx.currentTime;
+  const reps = 2 + Math.floor(Math.random() * 2);
+  const rootF = 1400 + Math.random() * 400;
+  /* 3-note motif: up, down, up-longer */
+  const motifF   = [rootF * 1.0, rootF * 0.78, rootF * 1.18];
+  const motifDur = [0.11, 0.09, 0.17];
+  const motifOff = [0, 0.17, 0.31];
+  for(let r = 0; r < reps; r++){
+    const tRep = now + r * 0.70;
+    motifF.forEach((f, i) => {
+      const t = tRep + motifOff[i];
+      const sweep = f + (i === 1 ? -80 : 90);
+      birdSyllable(ctx, pan, t, f, sweep, motifDur[i], 0.21, 0.011, 8);
+    });
+  }
+}
+
+/* ─── Species E — Mangrove Whistler: long, pure, fluting whistle ───
+   Real call: clear single-pitch whistle with gentle vibrato, 1200–1800 Hz.
+   The cleanest of the calls — sawtooth + narrow formant approximates
+   a flute-like "pure but warm" quality (not a beep because it has
+   harmonics and vibrato). */
+function birdWhistler(ctx, pan){
+  const now = ctx.currentTime;
+  const baseF = 1200 + Math.random() * 500;
+  const dur = 1.3 + Math.random() * 0.9;
+
+  /* Grace note intro */
+  if(Math.random() < 0.65){
+    birdSyllable(ctx, pan, now - 0.15, baseF * 1.22, baseF * 1.05, 0.10, 0.13, 0.013, 9);
+  }
+
+  /* Main sustained call — built manually for the long vibrato treatment */
+  const carrier = ctx.createOscillator();
+  carrier.type = 'sawtooth';
+  carrier.frequency.setValueAtTime(baseF, now);
+  carrier.frequency.linearRampToValueAtTime(baseF * 1.10, now + dur * 0.28);
+  carrier.frequency.linearRampToValueAtTime(baseF * 0.98, now + dur * 0.72);
+  carrier.frequency.linearRampToValueAtTime(baseF,        now + dur);
+
+  /* Vibrato oscillator (starts after attack) */
+  const vib = ctx.createOscillator(); vib.frequency.value = 5.8 + Math.random() * 1.5;
+  const vibG = ctx.createGain(); vibG.gain.value = baseF * 0.014;
+  vib.connect(vibG); vibG.connect(carrier.frequency);
+
+  const formant = ctx.createBiquadFilter(); formant.type = 'bandpass';
+  formant.frequency.value = baseF * 1.5; formant.Q.value = 9;
+  const soft = ctx.createBiquadFilter(); soft.type = 'lowpass';
+  soft.frequency.value = baseF * 4; soft.Q.value = 0.5;
+
+  /* Octave harmonic — warmth */
+  const harm = ctx.createOscillator(); harm.type = 'sine';
+  harm.frequency.value = baseF * 2.0;
+  const harmG = ctx.createGain();
+  harmG.gain.setValueAtTime(0, now);
+  harmG.gain.linearRampToValueAtTime(0.06, now + 0.09);
+  harmG.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+
+  /* Breath noise */
+  const nBuf = makePinkNoise(ctx, dur + 0.1);
+  const nSrc = ctx.createBufferSource(); nSrc.buffer = nBuf;
+  const nHP = ctx.createBiquadFilter(); nHP.type = 'highpass'; nHP.frequency.value = baseF * 0.5;
+  const nLP = ctx.createBiquadFilter(); nLP.type = 'lowpass';  nLP.frequency.value = baseF * 2.0;
+  const nG = ctx.createGain(); nG.gain.value = 0.013;
+
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(0, now);
+  env.gain.linearRampToValueAtTime(0.25, now + 0.09);
+  env.gain.setValueAtTime(0.25, now + dur * 0.62);
+  env.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+
+  carrier.connect(formant); formant.connect(soft); soft.connect(env); env.connect(pan);
+  harm.connect(harmG); harmG.connect(pan);
+  nSrc.connect(nHP); nHP.connect(nLP); nLP.connect(nG); nG.connect(pan);
+
+  carrier.start(now); carrier.stop(now + dur + 0.05);
+  vib.start(now + 0.10); vib.stop(now + dur + 0.05);
+  harm.start(now); harm.stop(now + dur + 0.05);
+  nSrc.start(now); nSrc.stop(now + dur + 0.05);
+}
+
+/* Dispatcher — pick a random species with weighting */
+function chirpBird(ctx, pan){
+  const r = Math.random();
+  if     (r < 0.22) birdKingfisher(ctx, pan);
+  else if(r < 0.44) birdSunbird(ctx, pan);
+  else if(r < 0.58) birdHeron(ctx, pan);
+  else if(r < 0.78) birdBulbul(ctx, pan);
+  else               birdWhistler(ctx, pan);
 }
 
 function scheduleBird(ctx){
   if(!ambOn)return;
-  const delay=4000+Math.random()*8000;
+  const delay=3000+Math.random()*7000;
   birdTimer=setTimeout(()=>{
     if(!ambOn||!audioCtx)return;
-    const pan=makePanner(ctx,(Math.random()-0.5)*4.5);
+    const pan=makePan(ctx,(Math.random()*2-1));
     pan.connect(masterGain);
     chirpBird(ctx,pan);
     scheduleBird(ctx);
   },delay);
 }
 
-/* ── Master toggle ── */
+/* ──────────────────────────────────────────
+   LAYER 7 — Rhythmic burst bird songs
+   Occasional sudden burst of a rapid repeated call
+   pattern — as when a bird breaks into a full territorial
+   song.  Structured as short motif × N repetitions.
+────────────────────────────────────────── */
+function rhythmicBirdBurst(ctx){
+  const now=ctx.currentTime;
+  const pan=makePan(ctx,(Math.random()*2-1));
+  pan.connect(masterGain);
+
+  const style=Math.floor(Math.random()*3);
+
+  if(style===0){
+    /* Rapid-fire "kek-kek-kek" kingfisher alarm — staccato pairs */
+    const n=8+Math.floor(Math.random()*6);
+    const rootF=1600+Math.random()*400;
+    for(let i=0;i<n;i++){
+      const t=now+i*0.105;
+      birdSyllable(ctx,pan,t, rootF, rootF-70, 0.068, 0.20, 0.007, 10);
+      /* Softer alternating lower note on odd beats */
+      if(i%2===1){
+        birdSyllable(ctx,pan,t+0.042, rootF*0.86, rootF*0.80, 0.048, 0.13, 0.006, 8);
+      }
+    }
+  } else if(style===1){
+    /* Melodic 4-note territorial phrase repeated — sunbird register */
+    const reps=4+Math.floor(Math.random()*3);
+    /* Motif intervals in cents: root, up a maj3rd, down a min3rd, up a 5th */
+    const motifCents=[0, 386, 89, 702];
+    const rootF=1300+Math.random()*500;
+    for(let r=0;r<reps;r++){
+      const tRep=now+r*0.42;
+      motifCents.forEach((cent,m)=>{
+        const t=tRep+m*0.095;
+        const f=rootF*Math.pow(2,cent/1200);
+        /* Each note sweeps slightly upward for a "singing" quality */
+        birdSyllable(ctx,pan,t, f, f*1.06, 0.085, 0.19, 0.010, 8);
+      });
+    }
+  } else {
+    /* Ascending spiral warble — thrush-warbler scaling up then tumbling back */
+    const steps=10+Math.floor(Math.random()*5);
+    const startF=1100+Math.random()*400;
+    for(let i=0;i<steps;i++){
+      const t=now+i*0.078;
+      const f=startF+i*85;
+      /* Sweep each note upward by a small interval */
+      birdSyllable(ctx,pan,t, f, f+110, 0.070, 0.18, 0.008, 7);
+    }
+    /* Tumble back down quickly */
+    for(let j=0;j<4;j++){
+      const t=now+steps*0.078+j*0.055;
+      const f=(startF+steps*85) - j*160;
+      birdSyllable(ctx,pan,t, f, f-80, 0.052, 0.14, 0.007, 7);
+    }
+  }
+}
+
+function scheduleRhythmicBird(ctx){
+  if(!ambOn)return;
+  /* Rhythmic bursts are rarer — every 15-40 seconds */
+  const delay=15000+Math.random()*25000;
+  rhythmicBirdTimer=setTimeout(()=>{
+    if(!ambOn||!audioCtx)return;
+    rhythmicBirdBurst(ctx);
+    scheduleRhythmicBird(ctx);
+  },delay);
+}
+
+/* ──────────────────────────────────────────
+   MASTER TOGGLE
+────────────────────────────────────────── */
 function toggleAudio(){
   ambOn=!ambOn;
   ['ambTog','ambTogMob'].forEach(id=>{
@@ -3115,10 +3944,8 @@ function toggleAudio(){
   });
 
   if(ambOn){
-    /* First activation — build everything */
     if(!audioCtx){
       audioCtx=new(window.AudioContext||window.webkitAudioContext)();
-      // Listener position (listener = user = centre)
       if(audioCtx.listener.positionX){
         audioCtx.listener.positionX.value=0;
         audioCtx.listener.positionY.value=0;
@@ -3128,21 +3955,29 @@ function toggleAudio(){
       masterGain.gain.value=0;
       masterGain.connect(audioCtx.destination);
 
-      forestSrc=startForest(audioCtx);
-      startWater(audioCtx);   // refs stored internally; we don't need to stop them independently
+      /* Start all continuous layers */
+      startForestBreath(audioCtx);
+      startWaterOnRoots(audioCtx);
+      startRootRustle(audioCtx);
+      startCrickets(audioCtx);
     }
-    // Fade master in
+    /* Fade master in */
     masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
-    masterGain.gain.setTargetAtTime(1,audioCtx.currentTime,.6);
+    masterGain.gain.setTargetAtTime(1,audioCtx.currentTime,.8);
+
+    /* Schedule stochastic layers */
     scheduleBird(audioCtx);
+    scheduleShrimpPops(audioCtx);
+    scheduleRhythmicBird(audioCtx);
 
   }else{
-    /* Fade out master */
     if(masterGain){
       masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
-      masterGain.gain.setTargetAtTime(0,audioCtx.currentTime,.8);
+      masterGain.gain.setTargetAtTime(0,audioCtx.currentTime,1.0);
     }
     clearTimeout(birdTimer);birdTimer=null;
+    clearTimeout(shrimpTimer);shrimpTimer=null;
+    clearTimeout(rhythmicBirdTimer);rhythmicBirdTimer=null;
   }
 }
 
@@ -4115,16 +4950,30 @@ function buildWordSearch(d){
   div.appendChild(wordRow);
   // Interaction: click/drag to select
   let selecting=false,selCells=[],startCell=null;
-  function getCell(r,c){return cells[r*size+c];}
-  function clearSel(){selCells.forEach(c=>c.classList.remove('sel'));selCells=[];}
+  function getCell(r,c){
+    if(r<0||r>=size||c<0||c>=size)return null;
+    return cells[r*size+c];
+  }
+  function clearSel(){selCells.forEach(c=>c&&c.classList.remove('sel'));selCells=[];}
   function getCellsLine(r1,c1,r2,c2){
-    const dr=Math.sign(r2-r1),dc=Math.sign(c2-c1);
-    const len=Math.max(Math.abs(r2-r1),Math.abs(c2-c1));
+    const rawDr=r2-r1,rawDc=c2-c1;
+    const absR=Math.abs(rawDr),absC=Math.abs(rawDc);
+    if(absR===0&&absC===0)return [getCell(r1,c1)].filter(Boolean);
+    let dr,dc,len;
+    if(absR===0){dr=0;dc=Math.sign(rawDc);len=absC;}                          // pure horizontal
+    else if(absC===0){dr=Math.sign(rawDr);dc=0;len=absR;}                     // pure vertical
+    else if(absR>=absC*2){dr=Math.sign(rawDr);dc=0;len=absR;}                 // mostly vertical → snap V
+    else if(absC>=absR*2){dr=0;dc=Math.sign(rawDc);len=absC;}                 // mostly horizontal → snap H
+    else{dr=Math.sign(rawDr);dc=Math.sign(rawDc);len=Math.min(absR,absC);}    // diagonal → use shorter axis
     const result=[];
-    for(let i=0;i<=len;i++)result.push(getCell(r1+i*dr,c1+i*dc));
+    for(let i=0;i<=len;i++){
+      const cell=getCell(r1+i*dr,c1+i*dc);
+      if(cell)result.push(cell);
+    }
     return result;
   }
   function checkWord(cellList){
+    if(!cellList||!cellList.length)return;
     const word=cellList.map(c=>c.textContent).join('');
     const rev=word.split('').reverse().join('');
     const match=d.words.find(w=>w.toUpperCase()===word||w.toUpperCase()===rev);
@@ -4136,6 +4985,13 @@ function buildWordSearch(d){
       }
     }
   }
+  function endDrag(){
+    if(!selecting)return;
+    selecting=false;
+    checkWord(selCells);
+    clearSel();
+    startCell=null;
+  }
   gridEl.addEventListener('mousedown',e=>{
     const c=e.target.closest('.ws-cell');if(!c)return;
     selecting=true;startCell=c;clearSel();c.classList.add('sel');selCells=[c];
@@ -4145,14 +5001,15 @@ function buildWordSearch(d){
     const c=e.target.closest('.ws-cell');if(!c)return;
     clearSel();
     const r1=+startCell.dataset.r,c1=+startCell.dataset.c,r2=+c.dataset.r,c2=+c.dataset.c;
-    selCells=getCellsLine(r1,c1,r2,c2);selCells.forEach(x=>x.classList.add('sel'));
+    selCells=getCellsLine(r1,c1,r2,c2);selCells.forEach(x=>x&&x.classList.add('sel'));
   });
-  gridEl.addEventListener('mouseup',()=>{if(!selecting)return;selecting=false;checkWord(selCells);clearSel();startCell=null;});
+  // Listen on document so releasing mouse anywhere ends the drag
+  document.addEventListener('mouseup',endDrag);
   // Touch support
   function cellFromTouch(e){const t=e.changedTouches[0];const el=document.elementFromPoint(t.clientX,t.clientY);return el?.closest('.ws-cell');}
   gridEl.addEventListener('touchstart',e=>{const c=cellFromTouch(e);if(!c)return;e.preventDefault();selecting=true;startCell=c;clearSel();c.classList.add('sel');selCells=[c];},{passive:false});
-  gridEl.addEventListener('touchmove',e=>{if(!selecting||!startCell)return;e.preventDefault();const c=cellFromTouch(e);if(!c)return;clearSel();const r1=+startCell.dataset.r,c1=+startCell.dataset.c,r2=+c.dataset.r,c2=+c.dataset.c;selCells=getCellsLine(r1,c1,r2,c2);selCells.forEach(x=>x.classList.add('sel'));},{passive:false});
-  gridEl.addEventListener('touchend',()=>{if(!selecting)return;selecting=false;checkWord(selCells);clearSel();startCell=null;});
+  gridEl.addEventListener('touchmove',e=>{if(!selecting||!startCell)return;e.preventDefault();const c=cellFromTouch(e);if(!c)return;clearSel();const r1=+startCell.dataset.r,c1=+startCell.dataset.c,r2=+c.dataset.r,c2=+c.dataset.c;selCells=getCellsLine(r1,c1,r2,c2);selCells.forEach(x=>x&&x.classList.add('sel'));},{passive:false});
+  gridEl.addEventListener('touchend',()=>{endDrag();});
   return div;
 }
 
@@ -5257,6 +6114,57 @@ function toast(msg,type='ok'){const t=document.getElementById('toast');t.textCon
 
   })();
 
+})();
+</script>
+
+<script>
+// ── PARALLAX ─────────────────────────────────────────────────────────────────
+(function(){
+  'use strict';
+
+  // Collect all parallax targets
+  function getTargets() {
+    const banners  = Array.from(document.querySelectorAll('.parallax-banner img, .parallax-feature img'));
+    return banners;
+  }
+
+  function updateParallax() {
+    const targets = getTargets();
+    const winH = window.innerHeight;
+
+    targets.forEach(function(img) {
+      const rect = img.parentElement.getBoundingClientRect();
+      // How far through the viewport is the element's centre?
+      const center = rect.top + rect.height / 2;
+      // Normalise: 0 = element centre at viewport bottom, 1 = at top
+      const progress = 1 - (center / winH);
+      // Shift range: -8% to +8% (feels natural, not too extreme)
+      const shift = (progress - 0.5) * 16;
+      img.style.transform = 'translateY(' + shift + '%)';
+    });
+  }
+
+  // Use rAF-throttled scroll listener
+  let ticking = false;
+  function onScroll() {
+    if (!ticking) {
+      requestAnimationFrame(function() {
+        updateParallax();
+        ticking = false;
+      });
+      ticking = true;
+    }
+  }
+
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', updateParallax, { passive: true });
+
+  // Initial pass once images might have loaded
+  if (document.readyState === 'complete') {
+    updateParallax();
+  } else {
+    window.addEventListener('load', updateParallax);
+  }
 })();
 </script>
 
