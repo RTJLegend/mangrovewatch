@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  MangroveWatch — sitemap.xml
+  ═══════════════════════════════════════════════════════════════════
+  BEFORE SUBMITTING TO GOOGLE SEARCH CONSOLE
+  ───────────────────────────────────────────
+  1. Replace every occurrence of https://mangrovewatch.vercel.app with
+     your actual verified domain (must match exactly what you add
+     in Search Console under "Add Property").
+
+  2. Upload this file to the ROOT of your web server so it is
+     reachable at:  https://mangrovewatch.vercel.app/sitemap.xml
+
+  3. In Google Search Console → Sitemaps → enter:  sitemap.xml
+     and click "Submit".
+
+  NOTE ON HASH ROUTING
+  ─────────────────────
+  This site uses hash-based client-side routing (#home, #conservation,
+  etc.). Google's crawler does not follow hash fragments as separate
+  URLs — it treats the root URL as a single page. The section entries
+  below (/#conservation, /#species, …) are included for completeness
+  and for any crawlers/bots that do resolve them.
+
+  For full per-section Google indexation in the future, consider
+  migrating routing to the History API (pushState paths without #).
+  ═══════════════════════════════════════════════════════════════════
+-->
+<urlset
+  xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:xhtml="http://www.w3.org/1999/xhtml"
+  xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+
+  <!-- ═══════════════════════════════════════════════════════════
+       HOME
+       Primary landing page — hero, quick-nav, feedback & query forms
+       ═══════════════════════════════════════════════════════════ -->
+  <url>
+    <loc>https://mangrovewatch.vercel.app/</loc>
+    <lastmod>2026-04-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1589556183130-530470785fab?fm=jpg&amp;q=60&amp;w=1200&amp;auto=format&amp;fit=crop</image:loc>
+      <image:title>Mangrove forest canopy</image:title>
+      <image:caption>MangroveWatch — citizen science platform protecting coastal mangrove ecosystems</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://images.pexels.com/photos/35125738/pexels-photo-35125738.jpeg?cs=srgb&amp;dl=pexels-siarhei-nester-318033361-35125738.jpg&amp;fm=jpg</image:loc>
+      <image:title>Mangrove roots at waterline</image:title>
+      <image:caption>Intricate mangrove root systems protecting coastlines from erosion</image:caption>
+    </image:image>
+  </url>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       CONSERVATION
+       Why mangroves matter — ecosystem metrics, carbon sequestration,
+       coastal protection data, and the urban threat
+       ═══════════════════════════════════════════════════════════ -->
+  <url>
+    <loc>https://mangrovewatch.vercel.app/#conservation</loc>
+    <lastmod>2026-04-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <image:image>
+      <image:loc>https://www.rgs.org/media/l45fj05l/mangroves-with-glassy-water-and-blue-sky.jpg</image:loc>
+      <image:title>Mangrove forest with glassy water and blue sky</image:title>
+      <image:caption>Why mangroves matter — biodiversity, carbon storage, and coastal resilience</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://images.wallpapersden.com/image/download/mangrove-forest-in-phang-nga-bay-4k-thailand_bWtoa2aUmZqaraWkpJRobWllrWdma2U.jpg</image:loc>
+      <image:title>Mangrove forest in Phang Nga Bay</image:title>
+      <image:caption>Dense mangrove canopy illustrating the scale of these vital ecosystems</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://www2.cifor.org/asia-pacific-rainforest-summit-2018/wp-content/uploads/sites/34/2018/04/aprs-205-IMG_3865.JPG</image:loc>
+      <image:title>Mangrove conservation research fieldwork</image:title>
+      <image:caption>Field researchers documenting mangrove health and biodiversity data</image:caption>
+    </image:image>
+  </url>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       SPECIES MAP
+       Interactive map of mangrove hotspots and local flora & fauna
+       of Oman and India — filterable species database
+       ═══════════════════════════════════════════════════════════ -->
+  <url>
+    <loc>https://mangrovewatch.vercel.app/#species</loc>
+    <lastmod>2026-04-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://wallpapercave.com/wp/wp14348261.jpg</image:loc>
+      <image:title>Mangrove forest aerial view</image:title>
+      <image:caption>Aerial view of key mangrove conservation zones mapped by MangroveWatch</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://wallpapercave.com/wp/wp8912040.jpg</image:loc>
+      <image:title>Mangrove habitat at Qurum Beach</image:title>
+      <image:caption>Qurum Beach mangrove habitat — one of Oman's most important conservation zones</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://static.vecteezy.com/system/resources/previews/072/598/630/large_2x/mangrove-forest-with-root-system-over-clear-water-in-tropical-coastal-environment-photo.jpg</image:loc>
+      <image:title>Mangrove roots over clear water</image:title>
+      <image:caption>Tropical mangrove root system in a coastal conservation zone</image:caption>
+    </image:image>
+  </url>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       MAGAZINE & EVENTS
+       Mangrove Chronicles weekly publication and Operation Mangrove
+       field events in Muscat, Oman
+       ═══════════════════════════════════════════════════════════ -->
+  <url>
+    <loc>https://mangrovewatch.vercel.app/#impact</loc>
+    <lastmod>2026-04-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://images.pexels.com/photos/13790858/pexels-photo-13790858.jpeg?cs=srgb&amp;dl=pexels-nandhukumar-13790858.jpg&amp;fm=jpg</image:loc>
+      <image:title>Mangrove waterway</image:title>
+      <image:caption>Mangrove Chronicles — MangroveWatch weekly conservation publication, 2026</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1520333764090-778d6dc95ec3?fm=jpg&amp;q=60&amp;w=1200&amp;auto=format&amp;fit=crop</image:loc>
+      <image:title>Mangrove conservation zone</image:title>
+      <image:caption>Operation Mangrove — team-based field conservation events across Muscat</image:caption>
+    </image:image>
+  </url>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       CONTACT
+       Meet the MangroveWatch team and send an enquiry
+       ═══════════════════════════════════════════════════════════ -->
+  <url>
+    <loc>https://mangrovewatch.vercel.app/#contact</loc>
+    <lastmod>2026-04-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+</urlset>
