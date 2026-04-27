@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://mangrovewatch.vercel.app/sitemap.xml
